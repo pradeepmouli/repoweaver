@@ -1,6 +1,7 @@
 import { GitHubClient, GitHubRepository } from './github-client';
 import { GitHubTemplateManager } from './github-template-manager';
-import { BootstrapOptions, BootstrapResult } from './types';
+import { BootstrapOptions, BootstrapResult, WeaverConfig } from './types';
+import { ConfigLoader } from './config-loader';
 
 export interface GitHubBootstrapOptions extends Omit<BootstrapOptions, 'targetPath' | 'initGit' | 'addRemote'> {
   targetOwner: string;
@@ -217,18 +218,53 @@ See \`BOOTSTRAP_SUMMARY.md\` for detailed information.
 
   async getRepositoryTemplates(owner: string, repo: string): Promise<string[]> {
     try {
-      // Look for a .repoweaver.json configuration file
-      const configFiles = await this.client.getRepositoryContents(owner, repo, '.repoweaver.json');
-      const configFile = configFiles.find(f => f.name === '.repoweaver.json');
+      // Look for RepoWeaver configuration files
+      const configFiles = ['weaver.json', '.weaver.json', '.repoweaver.json'];
       
-      if (configFile) {
-        const config = JSON.parse(configFile.content);
-        return config.templates || [];
+      for (const configFileName of configFiles) {
+        try {
+          const files = await this.client.getRepositoryContents(owner, repo, configFileName);
+          const configFile = files.find(f => f.name === configFileName);
+          
+          if (configFile) {
+            const config = JSON.parse(configFile.content);
+            return config.templates || [];
+          }
+        } catch (error) {
+          // File doesn't exist, try next one
+          continue;
+        }
       }
       
       return [];
     } catch (error) {
       return [];
+    }
+  }
+
+  async getRepositoryConfig(owner: string, repo: string): Promise<WeaverConfig | null> {
+    try {
+      // Look for RepoWeaver configuration files
+      const configFiles = ['weaver.json', '.weaver.json', '.repoweaver.json'];
+      
+      for (const configFileName of configFiles) {
+        try {
+          const files = await this.client.getRepositoryContents(owner, repo, configFileName);
+          const configFile = files.find(f => f.name === configFileName);
+          
+          if (configFile) {
+            const config = JSON.parse(configFile.content);
+            return config as WeaverConfig;
+          }
+        } catch (error) {
+          // File doesn't exist, try next one
+          continue;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
     }
   }
 
@@ -241,8 +277,23 @@ See \`BOOTSTRAP_SUMMARY.md\` for detailed information.
     await this.client.createOrUpdateFile(
       owner,
       repo,
-      '.repoweaver.json',
+      'weaver.json',
       JSON.stringify(config, null, 2),
+      'Update RepoWeaver configuration'
+    );
+  }
+
+  async saveRepositoryConfig(owner: string, repo: string, config: WeaverConfig): Promise<void> {
+    const configWithMetadata = {
+      ...config,
+      lastUpdated: new Date().toISOString()
+    };
+
+    await this.client.createOrUpdateFile(
+      owner,
+      repo,
+      'weaver.json',
+      JSON.stringify(configWithMetadata, null, 2),
       'Update RepoWeaver configuration'
     );
   }

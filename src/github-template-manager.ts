@@ -1,11 +1,14 @@
 import { GitHubClient, GitHubFile } from './github-client';
-import { TemplateProcessingResult, TemplateRepository } from './types';
+import { TemplateProcessingResult, TemplateRepository, MergeStrategyConfig, FilePatternMergeStrategy } from './types';
+import { MergeStrategyRegistry } from './merge-strategy-registry';
 
 export class GitHubTemplateManager {
   private client: GitHubClient;
+  private mergeRegistry: MergeStrategyRegistry;
 
   constructor(client: GitHubClient) {
     this.client = client;
+    this.mergeRegistry = new MergeStrategyRegistry();
   }
 
   async processTemplate(
@@ -13,7 +16,9 @@ export class GitHubTemplateManager {
     targetOwner: string,
     targetRepo: string,
     excludePatterns: string[] = [],
-    mergeStrategy: 'overwrite' | 'merge' | 'skip-existing' = 'merge'
+    mergeStrategy: 'overwrite' | 'merge' | 'skip-existing' | MergeStrategyConfig = 'merge',
+    mergeStrategies: FilePatternMergeStrategy[] = [],
+    plugins: string[] = []
   ): Promise<TemplateProcessingResult> {
     const result: TemplateProcessingResult = {
       success: true,
@@ -23,6 +28,11 @@ export class GitHubTemplateManager {
     };
 
     try {
+      // Load plugins
+      for (const plugin of plugins) {
+        await this.mergeRegistry.loadPlugin(plugin);
+      }
+
       // Get template files from GitHub
       const templateFiles = await this.client.getTemplateFiles(template);
       
@@ -35,6 +45,7 @@ export class GitHubTemplateManager {
         targetOwner,
         targetRepo,
         mergeStrategy,
+        mergeStrategies,
         result
       );
 
@@ -69,7 +80,8 @@ export class GitHubTemplateManager {
     files: GitHubFile[],
     targetOwner: string,
     targetRepo: string,
-    mergeStrategy: 'overwrite' | 'merge' | 'skip-existing',
+    mergeStrategy: 'overwrite' | 'merge' | 'skip-existing' | MergeStrategyConfig,
+    mergeStrategies: FilePatternMergeStrategy[],
     result: TemplateProcessingResult
   ): Promise<void> {
     const branch = `boots-strapper-update-${Date.now()}`;
@@ -80,24 +92,59 @@ export class GitHubTemplateManager {
 
       for (const file of files) {
         try {
+          // Determine merge strategy for this file
+          const defaultMergeStrategy = typeof mergeStrategy === 'string' 
+            ? { type: mergeStrategy as 'overwrite' | 'merge' | 'skip-existing' }
+            : mergeStrategy;
+          
+          const fileStrategy = await this.mergeRegistry.resolveStrategyForFile(
+            file.path,
+            mergeStrategies,
+            defaultMergeStrategy
+          );
+
           const shouldProcess = await this.shouldProcessFile(
             targetOwner,
             targetRepo,
             file.path,
-            mergeStrategy
+            fileStrategy.name
           );
 
           if (shouldProcess) {
             let content = file.content;
 
-            // If merge strategy is 'merge', we might need to merge with existing content
-            if (mergeStrategy === 'merge') {
-              content = await this.mergeFileContent(
-                targetOwner,
-                targetRepo,
-                file.path,
-                file.content
-              );
+            // Get existing content if file exists
+            let existingContent = '';
+            try {
+              const existingFiles = await this.client.getRepositoryContents(targetOwner, targetRepo, file.path);
+              const existingFile = existingFiles.find(f => f.path === file.path && f.type === 'file');
+              existingContent = existingFile?.content || '';
+            } catch (error) {
+              // File doesn't exist, which is fine
+            }
+
+            // Apply merge strategy
+            if (existingContent) {
+              const mergeResult = await fileStrategy.merge({
+                filePath: file.path,
+                templateName: result.template.name,
+                existingContent,
+                newContent: file.content
+              });
+
+              if (mergeResult.success) {
+                content = mergeResult.content;
+                
+                // Track warnings and conflicts
+                if (mergeResult.warnings) {
+                  result.errors.push(...mergeResult.warnings.map(w => `Warning: ${w}`));
+                }
+                if (mergeResult.conflicts) {
+                  result.errors.push(...mergeResult.conflicts.map(c => `Conflict: ${c}`));
+                }
+              } else {
+                result.errors.push(`Merge failed for ${file.path}, using new content`);
+              }
             }
 
             await this.client.createOrUpdateFile(
@@ -105,7 +152,7 @@ export class GitHubTemplateManager {
               targetRepo,
               file.path,
               content,
-              `Update ${file.path} from template ${template.name}`,
+              `Update ${file.path} from template ${result.template.name} using ${fileStrategy.name} strategy`,
               branch
             );
 
@@ -140,9 +187,9 @@ export class GitHubTemplateManager {
     owner: string,
     repo: string,
     filePath: string,
-    mergeStrategy: 'overwrite' | 'merge' | 'skip-existing'
+    strategyName: string
   ): Promise<boolean> {
-    if (mergeStrategy === 'overwrite') {
+    if (strategyName === 'overwrite') {
       return true;
     }
 
@@ -151,11 +198,11 @@ export class GitHubTemplateManager {
       await this.client.getRepositoryContents(owner, repo, filePath);
       
       // File exists
-      if (mergeStrategy === 'skip-existing') {
+      if (strategyName === 'skip-existing') {
         return false;
       }
       
-      // mergeStrategy === 'merge'
+      // All other strategies process existing files
       return true;
     } catch (error) {
       // File doesn't exist, so we can create it
@@ -163,96 +210,8 @@ export class GitHubTemplateManager {
     }
   }
 
-  private async mergeFileContent(
-    owner: string,
-    repo: string,
-    filePath: string,
-    newContent: string
-  ): Promise<string> {
-    try {
-      const existingFiles = await this.client.getRepositoryContents(owner, repo, filePath);
-      const existingFile = existingFiles.find(f => f.path === filePath && f.type === 'file');
-      
-      if (!existingFile) {
-        return newContent;
-      }
-
-      // For now, implement a simple merge strategy
-      // In a more sophisticated implementation, you might:
-      // - Parse JSON/YAML files and merge objects
-      // - Use diff libraries for code files
-      // - Apply custom merge rules based on file type
-      
-      return this.simpleMerge(existingFile.content, newContent, filePath);
-    } catch (error) {
-      // If we can't get existing content, just use new content
-      return newContent;
-    }
-  }
-
-  private simpleMerge(existingContent: string, newContent: string, filePath: string): string {
-    // Simple merge logic based on file type
-    if (filePath.endsWith('.json')) {
-      return this.mergeJsonFiles(existingContent, newContent);
-    } else if (filePath.endsWith('.md')) {
-      return this.mergeMarkdownFiles(existingContent, newContent);
-    } else if (filePath.endsWith('package.json')) {
-      return this.mergePackageJson(existingContent, newContent);
-    }
-
-    // For other files, append new content with a separator
-    return existingContent + '\n\n# --- Template Update ---\n\n' + newContent;
-  }
-
-  private mergeJsonFiles(existing: string, newContent: string): string {
-    try {
-      const existingObj = JSON.parse(existing);
-      const newObj = JSON.parse(newContent);
-      
-      // Deep merge objects
-      const merged = this.deepMerge(existingObj, newObj);
-      return JSON.stringify(merged, null, 2);
-    } catch (error) {
-      return newContent;
-    }
-  }
-
-  private mergeMarkdownFiles(existing: string, newContent: string): string {
-    // Simple strategy: append new content to existing
-    return existing + '\n\n---\n\n' + newContent;
-  }
-
-  private mergePackageJson(existing: string, newContent: string): string {
-    try {
-      const existingPkg = JSON.parse(existing);
-      const newPkg = JSON.parse(newContent);
-      
-      // Merge dependencies and devDependencies
-      const merged = {
-        ...existingPkg,
-        dependencies: { ...existingPkg.dependencies, ...newPkg.dependencies },
-        devDependencies: { ...existingPkg.devDependencies, ...newPkg.devDependencies },
-        scripts: { ...existingPkg.scripts, ...newPkg.scripts }
-      };
-      
-      return JSON.stringify(merged, null, 2);
-    } catch (error) {
-      return newContent;
-    }
-  }
-
-  private deepMerge(target: any, source: any): any {
-    const result = { ...target };
-    
-    for (const key in source) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        result[key] = this.deepMerge(target[key] || {}, source[key]);
-      } else {
-        result[key] = source[key];
-      }
-    }
-    
-    return result;
+  async cleanup(): Promise<void> {
+    await this.mergeRegistry.cleanup();
   }
 
   private generatePullRequestBody(template: TemplateRepository, result: TemplateProcessingResult): string {

@@ -2,7 +2,9 @@
 
 import { Command } from 'commander';
 import { Bootstrapper } from './bootstrapper';
-import { BootstrapOptions, TemplateRepository } from './types';
+import { BootstrapOptions, TemplateRepository, WeaverConfig } from './types';
+import { ConfigLoader } from './config-loader';
+import * as path from 'path';
 
 const program = new Command();
 
@@ -10,6 +12,34 @@ program
   .name('repoweaver')
   .description('Skillfully weave multiple templates together to create and update repositories')
   .version('1.0.0');
+
+// Add init command to create sample configuration files
+program
+  .command('init')
+  .description('Initialize a RepoWeaver project with sample configuration files')
+  .option('--config-only', 'Only create configuration file')
+  .option('--ignore-only', 'Only create ignore file')
+  .action(async (options) => {
+    try {
+      const configLoader = new ConfigLoader();
+      
+      if (options.ignoreOnly) {
+        await configLoader.createSampleIgnore();
+      } else if (options.configOnly) {
+        await configLoader.createSampleConfig();
+      } else {
+        await configLoader.createSampleConfig();
+        await configLoader.createSampleIgnore();
+      }
+      
+      console.log('✅ RepoWeaver project initialized!');
+      console.log('📝 Edit weaver.json to configure your templates');
+      console.log('🚫 Edit .weaverignore to exclude files from processing');
+    } catch (error) {
+      console.error('❌ Initialization failed:', error);
+      process.exit(1);
+    }
+  });
 
 program
   .command('bootstrap')
@@ -25,25 +55,34 @@ program
   .option('--merge-strategy <strategy>', 'Merge strategy: overwrite|merge|skip-existing', 'merge')
   .action(async (name, targetPath, options) => {
     try {
-      const templates: TemplateRepository[] = options.template.map((url: string) => ({
-        url,
-        name: extractRepoName(url),
-        branch: options.branch
-      }));
+      // Load configuration from files if they exist
+      const configLoader = new ConfigLoader();
+      const config = await configLoader.loadConfiguration();
+      
+      // Command line options override configuration file
+      const templates: TemplateRepository[] = options.template.length > 0 
+        ? options.template.map((url: string) => ({
+            url,
+            name: extractRepoName(url),
+            branch: options.branch
+          }))
+        : config.templates;
 
       if (templates.length === 0) {
         console.error('Error: At least one template is required');
+        console.error('Either provide --template options or create a weaver.json configuration file');
         process.exit(1);
       }
 
+      // Merge configuration with command line options
       const bootstrapOptions: BootstrapOptions = {
         targetPath,
         templates,
-        repositoryName: name,
-        initGit: options.git,
-        addRemote: options.remote,
-        excludePatterns: options.exclude,
-        mergeStrategy: options.mergeStrategy
+        repositoryName: name || config.name || path.basename(targetPath),
+        initGit: options.git !== undefined ? options.git : config.initGit,
+        addRemote: options.remote || config.addRemote,
+        excludePatterns: options.exclude.length > 0 ? options.exclude : config.excludePatterns,
+        mergeStrategy: options.mergeStrategy || config.mergeStrategy
       };
 
       const bootstrapper = new Bootstrapper();
@@ -78,23 +117,32 @@ program
   .option('--merge-strategy <strategy>', 'Merge strategy: overwrite|merge|skip-existing', 'merge')
   .action(async (targetPath, options) => {
     try {
-      const templates: TemplateRepository[] = options.template.map((url: string) => ({
-        url,
-        name: extractRepoName(url),
-        branch: options.branch
-      }));
+      // Load configuration from files if they exist
+      const configLoader = new ConfigLoader(targetPath);
+      const config = await configLoader.loadConfiguration();
+      
+      // Command line options override configuration file
+      const templates: TemplateRepository[] = options.template.length > 0 
+        ? options.template.map((url: string) => ({
+            url,
+            name: extractRepoName(url),
+            branch: options.branch
+          }))
+        : config.templates;
 
       if (templates.length === 0) {
         console.error('Error: At least one template is required');
+        console.error('Either provide --template options or create a weaver.json configuration file');
         process.exit(1);
       }
 
+      // Merge configuration with command line options
       const bootstrapOptions: BootstrapOptions = {
         targetPath,
         templates,
-        repositoryName: '',
-        excludePatterns: options.exclude,
-        mergeStrategy: options.mergeStrategy
+        repositoryName: config.name || path.basename(targetPath),
+        excludePatterns: options.exclude.length > 0 ? options.exclude : config.excludePatterns,
+        mergeStrategy: options.mergeStrategy || config.mergeStrategy
       };
 
       const bootstrapper = new Bootstrapper();

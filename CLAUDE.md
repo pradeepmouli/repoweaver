@@ -161,9 +161,36 @@ npm run mobile:build
 4. Files are processed based on merge strategy
 5. Temporary directories are cleaned up after processing
 
+## Configuration Files
+
+RepoWeaver supports multiple configuration approaches:
+
+### **Configuration Files** (in order of precedence):
+1. `weaver.json` - JSON configuration file
+2. `.weaver.json` - Hidden JSON configuration file  
+3. `weaver.js` - JavaScript configuration file (dynamic)
+4. `.weaver.js` - Hidden JavaScript configuration file
+
+### **Ignore Files**:
+1. `.weaverignore` - File patterns to exclude from template processing
+2. `.weaverignore.txt` - Alternative ignore file format
+
+### **Key Configuration Options**:
+- **templates**: Array of template repositories (string URLs or objects)
+- **mergeStrategy**: How to handle existing files (`merge`, `overwrite`, `skip-existing`)
+- **excludePatterns**: Glob patterns to exclude from processing
+- **includePatterns**: Exceptions to exclude patterns (use `!` prefix)
+- **autoUpdate**: Whether to automatically update from template changes
+- **hooks**: Pre/post processing commands
+- **variables**: Environment variable substitution with `${VAR_NAME}` syntax
+
+### **Command Priority**:
+Command line options always override configuration file settings
+
 ## Development Notes
 
 - **GitHub App** is built with TypeScript, Express.js, and uses Octokit for GitHub API operations
+- **Configuration Loading** uses `ConfigLoader` class to parse JSON and JavaScript config files
 - **Database** uses SQLite for development with support for other databases in production
 - **Authentication** uses GitHub OAuth flow with GitHub App authentication for API operations
 - **CLI** is built with TypeScript and uses `simple-git` for git operations (legacy)
@@ -173,3 +200,4 @@ npm run mobile:build
 - The GitHub App can be run directly with `ts-node` for development
 - Mobile app supports hot reload through Expo's development server
 - Environment variables are required for GitHub App configuration
+- Configuration files support variable substitution and dynamic JavaScript configs

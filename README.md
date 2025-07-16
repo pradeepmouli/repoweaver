@@ -8,7 +8,7 @@ A GitHub App that skillfully weaves multiple templates together to create and up
 - 🔄 **Auto Updates**: Automatically update repositories when templates change
 - 🎯 **Multi-Template Support**: Apply multiple templates to a single repository
 - 🌿 **Template Branch Support**: Use specific branches or subdirectories from templates
-- 🔧 **Smart Merge Strategies**: Intelligent merging for JSON, Markdown, and package.json files
+- 🔧 **Advanced Merge Strategies**: File pattern-based strategies, custom implementations, and plugin system
 - 🚫 **File Exclusion**: Flexible patterns to exclude files during template processing
 - 📦 **Pull Request Workflow**: All updates create pull requests for review
 - 🔐 **Secure**: Uses GitHub App authentication with fine-grained permissions
@@ -61,13 +61,106 @@ npx repoweaver --help
 
 ## Usage
 
+### Configuration Files
+
+RepoWeaver supports configuration files to make template management easier:
+
+#### `weaver.json` (or `.weaver.json`)
+```json
+{
+  "name": "my-awesome-project",
+  "description": "A project created with RepoWeaver",
+  "templates": [
+    "https://github.com/user/frontend-template.git",
+    {
+      "url": "https://github.com/user/backend-template.git",
+      "name": "backend",
+      "branch": "main",
+      "subDirectory": "api"
+    }
+  ],
+  "mergeStrategy": "merge",
+  "mergeStrategies": [
+    {
+      "patterns": ["package.json"],
+      "strategy": { "type": "package-json" },
+      "priority": 100
+    },
+    {
+      "patterns": ["*.json"],
+      "strategy": { "type": "json" },
+      "priority": 90
+    },
+    {
+      "patterns": ["*.md"],
+      "strategy": { "type": "markdown" },
+      "priority": 80
+    },
+    {
+      "patterns": ["src/**/*.js", "src/**/*.ts"],
+      "strategy": { "type": "overwrite" },
+      "priority": 70
+    }
+  ],
+  "excludePatterns": ["*.log", "node_modules/**", ".env*"],
+  "includePatterns": ["!.env.example"],
+  "autoUpdate": true,
+  "hooks": {
+    "postBootstrap": ["npm install", "npm run build"]
+  },
+  "variables": {
+    "PROJECT_NAME": "my-project",
+    "AUTHOR_NAME": "John Doe"
+  },
+  "plugins": ["npm-merger"]
+}
+```
+
+#### `.weaverignore`
+```
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+
+# Include exceptions
+!.env.example
+!README.md
+```
+
+#### `.weaver.js` (Dynamic Configuration)
+```javascript
+module.exports = {
+  name: process.env.PROJECT_NAME || 'my-project',
+  templates: [
+    'https://github.com/user/base-template.git',
+    ...(process.env.NODE_ENV === 'production' 
+      ? ['https://github.com/user/prod-template.git']
+      : ['https://github.com/user/dev-template.git']
+    )
+  ],
+  mergeStrategy: 'merge',
+  variables: {
+    NODE_ENV: process.env.NODE_ENV,
+    VERSION: require('./package.json').version
+  }
+};
+```
+
 ### Web Interface
 
 1. **Login** with your GitHub account
 2. **Select a repository** from your installation
-3. **Configure templates** by adding GitHub repository URLs
+3. **Configure templates** by adding GitHub repository URLs or upload a `weaver.json` file
 4. **Choose merge strategy**: `merge`, `overwrite`, or `skip-existing`
-5. **Set exclude patterns** to skip certain files
+5. **Set exclude patterns** to skip certain files (or use `.weaverignore`)
 6. **Bootstrap or update** your repository
 
 ### API Endpoints
@@ -87,11 +180,28 @@ The app automatically responds to:
 - **Installation events**: Manages app installation lifecycle
 - **Pull request events**: Handles template update reviews
 
-### CLI Usage (Legacy)
+### CLI Usage
+
+#### Initialize a new project
+
+```bash
+# Create sample configuration files
+repoweaver init
+
+# Or create just the config file
+repoweaver init --config-only
+
+# Or create just the ignore file
+repoweaver init --ignore-only
+```
 
 #### Bootstrap a new repository
 
 ```bash
+# Using configuration file
+repoweaver bootstrap my-project ./my-project
+
+# Using command line options (overrides config file)
 repoweaver bootstrap my-project ./my-project \
   --template https://github.com/user/template1.git \
   --template https://github.com/user/template2.git \
@@ -102,6 +212,10 @@ repoweaver bootstrap my-project ./my-project \
 #### Update an existing repository
 
 ```bash
+# Using configuration file
+repoweaver update ./my-project
+
+# Using command line options (overrides config file)
 repoweaver update ./my-project \
   --template https://github.com/user/updated-template.git \
   --merge-strategy merge
