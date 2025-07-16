@@ -1,0 +1,30 @@
+# GitHub App configuration
+name: "RepoWeaver"
+description: "Skillfully weave multiple templates together to create and update repositories with intelligent merge strategies"
+url: "https://github.com/apps/repoweaver"
+author: "RepoWeaver"
+version: "1.0.0"
+
+# Webhook configuration
+webhook:
+  active: true
+  events:
+    - push
+    - repository
+    - installation
+    - installation_repositories
+    - pull_request
+
+# Permissions
+permissions:
+  contents: write
+  metadata: read
+  repository_administration: write
+  pull_requests: write
+  actions: read
+  checks: write
+  issues: write
+  statuses: write
+
+# Public features
+public: true
