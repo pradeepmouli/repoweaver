@@ -1,220 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RepoWeaver - GitHub Template Manager</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4rem 0;
-        }
-        .feature-card {
-            transition: transform 0.3s ease;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-        .repo-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            background: white;
-        }
-        .template-badge {
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-right: 0.5rem;
-        }
-        .navbar-brand {
-            font-weight: bold;
-        }
-        .loading {
-            display: none;
-        }
-        .spinner {
-            width: 1rem;
-            height: 1rem;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-loom"></i> RepoWeaver
-            </a>
-            <div class="navbar-nav ms-auto">
-                <div id="user-info" class="d-none">
-                    <span class="navbar-text me-3">
-                        <img id="user-avatar" src="" alt="Avatar" class="rounded-circle me-2" width="24" height="24">
-                        <span id="user-name"></span>
-                    </span>
-                    <button id="logout-btn" class="btn btn-outline-light btn-sm">Logout</button>
-                </div>
-                <button id="login-btn" class="btn btn-primary">
-                    <i class="fab fa-github"></i> Login with GitHub
-                </button>
-            </div>
-        </div>
-    </nav>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>RepoWeaver - GitHub Template Manager</title>
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+		<style>
+			.hero-section {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 4rem 0;
+			}
+			.feature-card {
+				transition: transform 0.3s ease;
+			}
+			.feature-card:hover {
+				transform: translateY(-5px);
+			}
+			.repo-card {
+				border: 1px solid #e0e0e0;
+				border-radius: 8px;
+				padding: 1rem;
+				margin-bottom: 1rem;
+				background: white;
+			}
+			.template-badge {
+				background: #e3f2fd;
+				color: #1976d2;
+				padding: 0.25rem 0.5rem;
+				border-radius: 4px;
+				font-size: 0.75rem;
+				margin-right: 0.5rem;
+			}
+			.navbar-brand {
+				font-weight: bold;
+			}
+			.loading {
+				display: none;
+			}
+			.spinner {
+				width: 1rem;
+				height: 1rem;
+			}
+		</style>
+	</head>
+	<body>
+		<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+			<div class="container">
+				<a class="navbar-brand" href="#"> <i class="fas fa-loom"></i> RepoWeaver </a>
+				<div class="navbar-nav ms-auto">
+					<div id="user-info" class="d-none">
+						<span class="navbar-text me-3">
+							<img id="user-avatar" src="" alt="Avatar" class="rounded-circle me-2" width="24" height="24" />
+							<span id="user-name"></span>
+						</span>
+						<button id="logout-btn" class="btn btn-outline-light btn-sm">Logout</button>
+					</div>
+					<button id="login-btn" class="btn btn-primary"><i class="fab fa-github"></i> Login with GitHub</button>
+				</div>
+			</div>
+		</nav>
 
-    <!-- Hero Section -->
-    <div id="hero" class="hero-section">
-        <div class="container text-center">
-            <h1 class="display-4 mb-4">
-                <i class="fas fa-loom"></i> RepoWeaver
-            </h1>
-            <p class="lead mb-4">
-                Skillfully weave multiple templates together to create and update repositories with intelligent merge strategies
-            </p>
-            <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="feature-card text-center p-3">
-                                <i class="fas fa-layer-group fa-3x mb-3"></i>
-                                <h5>Template Weaving</h5>
-                                <p>Skillfully weave multiple templates into cohesive repositories</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="feature-card text-center p-3">
-                                <i class="fas fa-sync fa-3x mb-3"></i>
-                                <h5>Auto Updates</h5>
-                                <p>Automatically update repositories when templates change</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="feature-card text-center p-3">
-                                <i class="fas fa-magic fa-3x mb-3"></i>
-                                <h5>Intelligent Merging</h5>
-                                <p>Smart merge strategies for different file types</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <button id="get-started-btn" class="btn btn-light btn-lg mt-4">
-                <i class="fab fa-github"></i> Get Started
-            </button>
-        </div>
-    </div>
+		<!-- Hero Section -->
+		<div id="hero" class="hero-section">
+			<div class="container text-center">
+				<h1 class="display-4 mb-4"><i class="fas fa-loom"></i> RepoWeaver</h1>
+				<p class="lead mb-4">Skillfully weave multiple templates together to create and update repositories with intelligent merge strategies</p>
+				<div class="row justify-content-center">
+					<div class="col-md-8">
+						<div class="row">
+							<div class="col-md-4">
+								<div class="feature-card text-center p-3">
+									<i class="fas fa-layer-group fa-3x mb-3"></i>
+									<h5>Template Weaving</h5>
+									<p>Skillfully weave multiple templates into cohesive repositories</p>
+								</div>
+							</div>
+							<div class="col-md-4">
+								<div class="feature-card text-center p-3">
+									<i class="fas fa-sync fa-3x mb-3"></i>
+									<h5>Auto Updates</h5>
+									<p>Automatically update repositories when templates change</p>
+								</div>
+							</div>
+							<div class="col-md-4">
+								<div class="feature-card text-center p-3">
+									<i class="fas fa-magic fa-3x mb-3"></i>
+									<h5>Intelligent Merging</h5>
+									<p>Smart merge strategies for different file types</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<button id="get-started-btn" class="btn btn-light btn-lg mt-4"><i class="fab fa-github"></i> Get Started</button>
+			</div>
+		</div>
 
-    <!-- Dashboard -->
-    <div id="dashboard" class="container mt-5 d-none">
-        <div class="row">
-            <div class="col-md-3">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-folder"></i> Repositories</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="repositories-loading" class="loading text-center">
-                            <div class="spinner-border spinner" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p>Loading repositories...</p>
-                        </div>
-                        <div id="repositories-list"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-9">
-                <div id="repository-config" class="d-none">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-cog"></i> Repository Configuration</h5>
-                            <small class="text-muted">Configure templates and settings for <span id="selected-repo"></span></small>
-                        </div>
-                        <div class="card-body">
-                            <form id="config-form">
-                                <div class="mb-3">
-                                    <label class="form-label">Template Repositories</label>
-                                    <div id="templates-container">
-                                        <div class="input-group mb-2">
-                                            <input type="text" class="form-control" placeholder="https://github.com/owner/template.git" name="template">
-                                            <button class="btn btn-outline-secondary" type="button" onclick="addTemplate()">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">Merge Strategy</label>
-                                            <select class="form-select" name="mergeStrategy">
-                                                <option value="merge">Merge</option>
-                                                <option value="overwrite">Overwrite</option>
-                                                <option value="skip-existing">Skip Existing</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">
-                                                <input type="checkbox" class="form-check-input me-2" name="autoUpdate" checked>
-                                                Auto Update
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Exclude Patterns</label>
-                                    <input type="text" class="form-control" name="excludePatterns" placeholder="*.log, node_modules/**, .env">
-                                    <div class="form-text">Comma-separated patterns to exclude from template processing</div>
-                                </div>
-                                
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> Save Configuration
-                                    </button>
-                                    <button type="button" class="btn btn-success" onclick="bootstrapRepository()">
-                                        <i class="fas fa-rocket"></i> Bootstrap Repository
-                                    </button>
-                                    <button type="button" class="btn btn-warning" onclick="updateRepository()">
-                                        <i class="fas fa-sync"></i> Update Repository
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="welcome-message" class="text-center mt-5">
-                    <i class="fas fa-arrow-left fa-2x text-muted"></i>
-                    <h4 class="text-muted mt-3">Select a repository to configure templates</h4>
-                </div>
-            </div>
-        </div>
-    </div>
+		<!-- Dashboard -->
+		<div id="dashboard" class="container mt-5 d-none">
+			<div class="row">
+				<div class="col-md-3">
+					<div class="card">
+						<div class="card-header">
+							<h5><i class="fas fa-folder"></i> Repositories</h5>
+						</div>
+						<div class="card-body">
+							<div id="repositories-loading" class="loading text-center">
+								<div class="spinner-border spinner" role="status">
+									<span class="visually-hidden">Loading...</span>
+								</div>
+								<p>Loading repositories...</p>
+							</div>
+							<div id="repositories-list"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-9">
+					<div id="repository-config" class="d-none">
+						<div class="card">
+							<div class="card-header">
+								<h5><i class="fas fa-cog"></i> Repository Configuration</h5>
+								<small class="text-muted">Configure templates and settings for <span id="selected-repo"></span></small>
+							</div>
+							<div class="card-body">
+								<form id="config-form">
+									<div class="mb-3">
+										<label class="form-label">Template Repositories</label>
+										<div id="templates-container">
+											<div class="input-group mb-2">
+												<input type="text" class="form-control" placeholder="https://github.com/owner/template.git" name="template" />
+												<button class="btn btn-outline-secondary" type="button" onclick="addTemplate()">
+													<i class="fas fa-plus"></i>
+												</button>
+											</div>
+										</div>
+									</div>
 
-    <!-- Results Modal -->
-    <div class="modal fade" id="resultsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Operation Results</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="results-content"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+									<div class="row">
+										<div class="col-md-6">
+											<div class="mb-3">
+												<label class="form-label">Merge Strategy</label>
+												<select class="form-select" name="mergeStrategy">
+													<option value="merge">Merge</option>
+													<option value="overwrite">Overwrite</option>
+													<option value="skip">Skip Existing</option>
+												</select>
+											</div>
+										</div>
+										<div class="col-md-6">
+											<div class="mb-3">
+												<label class="form-label">
+													<input type="checkbox" class="form-check-input me-2" name="autoUpdate" checked />
+													Auto Update
+												</label>
+											</div>
+										</div>
+									</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
-</body>
+									<div class="mb-3">
+										<label class="form-label">Exclude Patterns</label>
+										<input type="text" class="form-control" name="excludePatterns" placeholder="*.log, node_modules/**, .env" />
+										<div class="form-text">Comma-separated patterns to exclude from template processing</div>
+									</div>
+
+									<div class="d-flex gap-2">
+										<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Configuration</button>
+										<button type="button" class="btn btn-success" onclick="bootstrapRepository()"><i class="fas fa-rocket"></i> Bootstrap Repository</button>
+										<button type="button" class="btn btn-warning" onclick="updateRepository()"><i class="fas fa-sync"></i> Update Repository</button>
+									</div>
+								</form>
+							</div>
+						</div>
+					</div>
+
+					<div id="welcome-message" class="text-center mt-5">
+						<i class="fas fa-arrow-left fa-2x text-muted"></i>
+						<h4 class="text-muted mt-3">Select a repository to configure templates</h4>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Results Modal -->
+		<div class="modal fade" id="resultsModal" tabindex="-1">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Operation Results</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+					</div>
+					<div class="modal-body">
+						<div id="results-content"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+		<script src="app.js"></script>
+	</body>
 </html>

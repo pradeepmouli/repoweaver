@@ -13,6 +13,7 @@ RepoWeaver is a GitHub App that skillfully weaves multiple templates together to
 ## Development Commands
 
 ### GitHub App Commands
+
 ```bash
 # Build the project
 npm run build
@@ -31,6 +32,7 @@ npm run lint
 ```
 
 ### CLI Tool Commands
+
 ```bash
 # Build CLI tool
 npm run cli:build
@@ -40,6 +42,7 @@ npm run cli:dev
 ```
 
 ### Mobile App Commands
+
 ```bash
 # Install mobile dependencies
 npm run mobile:install
@@ -50,7 +53,7 @@ npm run mobile:start
 # Run on iOS simulator
 npm run mobile:ios
 
-# Run on Android emulator  
+# Run on Android emulator
 npm run mobile:android
 
 # Run on web
@@ -65,64 +68,76 @@ npm run mobile:build
 ### Core Components
 
 **GitHub App Server** (`src/app.ts`):
+
 - Express.js server handling webhooks and API requests
 - OAuth authentication flow
 - REST API endpoints for repository management
 - Serves web interface from `public/` directory
 
 **GitHub API Client** (`src/github-client.ts`):
+
 - Wrapper around GitHub's REST API using Octokit
 - Handles repository operations, file management, and PR creation
 - Supports GitHub App authentication
 
 **GitHub Bootstrapper** (`src/github-bootstrapper.ts`):
+
 - Main orchestration class adapted for GitHub API
 - Creates pull requests for template updates
 - Handles multi-template repository bootstrapping
 
 **GitHub Template Manager** (`src/github-template-manager.ts`):
+
 - Processes templates using GitHub API instead of local cloning
 - Implements intelligent merge strategies for different file types
 - Creates branches and pull requests for updates
 
 **Database Layer** (`src/database.ts`):
+
 - SQLite database for storing app state
 - Manages installations, user sessions, and repository configurations
 - Job queue for background processing
 
 **Webhook Handler** (`src/webhook-handler.ts`):
+
 - Processes GitHub webhook events
 - Handles installation lifecycle and template updates
 - Queues background jobs for repository updates
 
 **Authentication** (`src/auth.ts`):
+
 - OAuth flow for GitHub authentication
 - Middleware for API request authentication
 - Session management
 
 **CLI Entry Point** (`src/cli.ts`):
+
 - Legacy CLI tool (still supported)
 - Uses Commander.js for CLI argument parsing
 - Supports `bootstrap` and `update` commands
 
 **Type Definitions** (`src/types.ts`):
+
 - Defines interfaces for TemplateRepository, BootstrapOptions, and result types
-- Supports merge strategies: overwrite, merge, skip-existing
+- Supports merge strategies: overwrite, merge, skip
 
 ### Mobile App Architecture
 
 **State Management**: Uses Redux Toolkit with slices for:
+
 - `projectsSlice.ts`: Project management state
-- `templatesSlice.ts`: Template repository state  
+- `templatesSlice.ts`: Template repository state
 - `progressSlice.ts`: Progress tracking state
 
 **Navigation**: React Navigation with stack and tab navigation (`AppNavigator.tsx`)
 
 **Core Services**:
+
 - `BootstrapperService.ts`: Interfaces with CLI functionality
 - `useBootstrapper.ts`: React hook for bootstrapper operations
 
 **Key Screens**:
+
 - `HomeScreen.tsx`: Main dashboard
 - `TemplatesScreen.tsx`: Template repository management
 - `CreateProjectScreen.tsx`: New project creation
@@ -147,6 +162,7 @@ npm run mobile:build
 ## File Processing Flow
 
 ### GitHub App Flow
+
 1. Templates are fetched from GitHub API using repository contents endpoint
 2. Files are processed in-memory without local cloning
 3. `.git` directories are automatically excluded
@@ -155,6 +171,7 @@ npm run mobile:build
 6. Multiple templates create individual PRs or summary PR
 
 ### CLI Flow (Legacy)
+
 1. Templates are cloned to temporary directory (`.boots-strapper-temp`)
 2. Files are copied recursively with exclude pattern filtering
 3. `.git` directories are automatically excluded
@@ -166,18 +183,21 @@ npm run mobile:build
 RepoWeaver supports multiple configuration approaches:
 
 ### **Configuration Files** (in order of precedence):
+
 1. `weaver.json` - JSON configuration file
-2. `.weaver.json` - Hidden JSON configuration file  
+2. `.weaver.json` - Hidden JSON configuration file
 3. `weaver.js` - JavaScript configuration file (dynamic)
 4. `.weaver.js` - Hidden JavaScript configuration file
 
 ### **Ignore Files**:
+
 1. `.weaverignore` - File patterns to exclude from template processing
 2. `.weaverignore.txt` - Alternative ignore file format
 
 ### **Key Configuration Options**:
+
 - **templates**: Array of template repositories (string URLs or objects)
-- **mergeStrategy**: How to handle existing files (`merge`, `overwrite`, `skip-existing`)
+- **mergeStrategy**: How to handle existing files (`merge`, `overwrite`, `skip`)
 - **excludePatterns**: Glob patterns to exclude from processing
 - **includePatterns**: Exceptions to exclude patterns (use `!` prefix)
 - **autoUpdate**: Whether to automatically update from template changes
@@ -185,6 +205,7 @@ RepoWeaver supports multiple configuration approaches:
 - **variables**: Environment variable substitution with `${VAR_NAME}` syntax
 
 ### **Command Priority**:
+
 Command line options always override configuration file settings
 
 ## Development Notes

@@ -25,17 +25,20 @@ A GitHub App that skillfully weaves multiple templates together to create and up
 ### Self-Hosted Setup
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/your-org/repoweaver.git
    cd repoweaver
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**:
+
    ```bash
    cp .env.example .env
    # Edit .env with your GitHub App credentials
@@ -66,57 +69,59 @@ npx repoweaver --help
 RepoWeaver supports configuration files to make template management easier:
 
 #### `weaver.json` (or `.weaver.json`)
+
 ```json
 {
-  "name": "my-awesome-project",
-  "description": "A project created with RepoWeaver",
-  "templates": [
-    "https://github.com/user/frontend-template.git",
-    {
-      "url": "https://github.com/user/backend-template.git",
-      "name": "backend",
-      "branch": "main",
-      "subDirectory": "api"
-    }
-  ],
-  "mergeStrategy": "merge",
-  "mergeStrategies": [
-    {
-      "patterns": ["package.json"],
-      "strategy": { "type": "package-json" },
-      "priority": 100
-    },
-    {
-      "patterns": ["*.json"],
-      "strategy": { "type": "json" },
-      "priority": 90
-    },
-    {
-      "patterns": ["*.md"],
-      "strategy": { "type": "markdown" },
-      "priority": 80
-    },
-    {
-      "patterns": ["src/**/*.js", "src/**/*.ts"],
-      "strategy": { "type": "overwrite" },
-      "priority": 70
-    }
-  ],
-  "excludePatterns": ["*.log", "node_modules/**", ".env*"],
-  "includePatterns": ["!.env.example"],
-  "autoUpdate": true,
-  "hooks": {
-    "postBootstrap": ["npm install", "npm run build"]
-  },
-  "variables": {
-    "PROJECT_NAME": "my-project",
-    "AUTHOR_NAME": "John Doe"
-  },
-  "plugins": ["npm-merger"]
+	"name": "my-awesome-project",
+	"description": "A project created with RepoWeaver",
+	"templates": [
+		"https://github.com/user/frontend-template.git",
+		{
+			"url": "https://github.com/user/backend-template.git",
+			"name": "backend",
+			"branch": "main",
+			"subDirectory": "api"
+		}
+	],
+	"mergeStrategy": "merge",
+	"mergeStrategies": [
+		{
+			"patterns": ["package.json"],
+			"strategy": { "type": "package-json" },
+			"priority": 100
+		},
+		{
+			"patterns": ["*.json"],
+			"strategy": { "type": "json" },
+			"priority": 90
+		},
+		{
+			"patterns": ["*.md"],
+			"strategy": { "type": "markdown" },
+			"priority": 80
+		},
+		{
+			"patterns": ["src/**/*.js", "src/**/*.ts"],
+			"strategy": { "type": "overwrite" },
+			"priority": 70
+		}
+	],
+	"excludePatterns": ["*.log", "node_modules/**", ".env*"],
+	"includePatterns": ["!.env.example"],
+	"autoUpdate": true,
+	"hooks": {
+		"postBootstrap": ["npm install", "npm run build"]
+	},
+	"variables": {
+		"PROJECT_NAME": "my-project",
+		"AUTHOR_NAME": "John Doe"
+	},
+	"plugins": ["npm-merger"]
 }
 ```
 
 #### `.weaverignore`
+
 ```
 # Dependencies
 node_modules/
@@ -136,21 +141,16 @@ build/
 ```
 
 #### `.weaver.js` (Dynamic Configuration)
+
 ```javascript
 module.exports = {
-  name: process.env.PROJECT_NAME || 'my-project',
-  templates: [
-    'https://github.com/user/base-template.git',
-    ...(process.env.NODE_ENV === 'production' 
-      ? ['https://github.com/user/prod-template.git']
-      : ['https://github.com/user/dev-template.git']
-    )
-  ],
-  mergeStrategy: 'merge',
-  variables: {
-    NODE_ENV: process.env.NODE_ENV,
-    VERSION: require('./package.json').version
-  }
+	name: process.env.PROJECT_NAME || 'my-project',
+	templates: ['https://github.com/user/base-template.git', ...(process.env.NODE_ENV === 'production' ? ['https://github.com/user/prod-template.git'] : ['https://github.com/user/dev-template.git'])],
+	mergeStrategy: 'merge',
+	variables: {
+		NODE_ENV: process.env.NODE_ENV,
+		VERSION: require('./package.json').version,
+	},
 };
 ```
 
@@ -159,7 +159,7 @@ module.exports = {
 1. **Login** with your GitHub account
 2. **Select a repository** from your installation
 3. **Configure templates** by adding GitHub repository URLs or upload a `weaver.json` file
-4. **Choose merge strategy**: `merge`, `overwrite`, or `skip-existing`
+4. **Choose merge strategy**: `merge`, `overwrite`, or `skip`
 5. **Set exclude patterns** to skip certain files (or use `.weaverignore`)
 6. **Bootstrap or update** your repository
 
@@ -176,6 +176,7 @@ The GitHub App provides REST API endpoints:
 ### Webhook Integration
 
 The app automatically responds to:
+
 - **Repository pushes**: Updates dependent repositories when templates change
 - **Installation events**: Manages app installation lifecycle
 - **Pull request events**: Handles template update reviews
@@ -233,7 +234,7 @@ repoweaver update ./my-project \
 - `--git` - Initialize git repository
 - `--remote <url>` - Add git remote origin
 - `--exclude <pattern>` - Exclude patterns (can be used multiple times)
-- `--merge-strategy <strategy>` - Merge strategy: overwrite|merge|skip-existing (default: merge)
+- `--merge-strategy <strategy>` - Merge strategy: overwrite|merge|skip (default: merge)
 
 ### Update Command
 
@@ -242,7 +243,7 @@ repoweaver update ./my-project \
 - `-b, --branch <branch>` - Template branch (default: main)
 - `-s, --subdir <path>` - Use subdirectory from template
 - `--exclude <pattern>` - Exclude patterns (can be used multiple times)
-- `--merge-strategy <strategy>` - Merge strategy: overwrite|merge|skip-existing (default: merge)
+- `--merge-strategy <strategy>` - Merge strategy: overwrite|merge|skip (default: merge)
 
 ## Examples
 
@@ -283,25 +284,25 @@ import { Bootstrapper, BootstrapOptions } from 'repoweaver';
 const bootstrapper = new Bootstrapper();
 
 const options: BootstrapOptions = {
-  targetPath: './my-project',
-  templates: [
-    {
-      url: 'https://github.com/user/template.git',
-      name: 'main-template',
-      branch: 'main'
-    }
-  ],
-  repositoryName: 'my-project',
-  initGit: true,
-  addRemote: 'https://github.com/myuser/my-project.git'
+	targetPath: './my-project',
+	templates: [
+		{
+			url: 'https://github.com/user/template.git',
+			name: 'main-template',
+			branch: 'main',
+		},
+	],
+	repositoryName: 'my-project',
+	initGit: true,
+	addRemote: 'https://github.com/myuser/my-project.git',
 };
 
 const result = await bootstrapper.bootstrap(options);
 
 if (result.success) {
-  console.log(`✅ Repository created at: ${result.repositoryPath}`);
+	console.log(`✅ Repository created at: ${result.repositoryPath}`);
 } else {
-  console.error('❌ Bootstrap failed:', result.errors);
+	console.error('❌ Bootstrap failed:', result.errors);
 }
 ```
 
