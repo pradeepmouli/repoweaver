@@ -1,6 +1,6 @@
 {
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://raw.githubusercontent.com/pradeepmouli/repoweaver/main/schemas/weaver.schema.json",
+	"$id": "https://raw.githubusercontent.com/pradeepmouli/repoweaver/master/schemas/weaver.schema.json",
 	"title": "RepoWeaver Configuration",
 	"description": "Configuration schema for RepoWeaver template repository management",
 	"type": "object",

@@ -186,8 +186,9 @@ RepoWeaver supports multiple configuration approaches:
 
 1. `weaver.json` - JSON configuration file
 2. `.weaver.json` - Hidden JSON configuration file
-3. `weaver.js` - JavaScript configuration file (dynamic)
-4. `.weaver.js` - Hidden JavaScript configuration file
+3. `weaver.config.ts` - TypeScript configuration file (dynamic, typed)
+4. `weaver.js` - JavaScript configuration file (dynamic)
+5. `.weaver.js` - Hidden JavaScript configuration file
 
 ### **Ignore Files**:
 
