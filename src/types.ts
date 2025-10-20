@@ -47,9 +47,37 @@ export interface MergeStrategyConfig {
 }
 
 export interface FilePatternMergeStrategy {
-	patterns: string[]; // Glob patterns to match files
+	/**
+	 * Either a list of glob patterns to match files, or a built-in category name.
+	 * If 'category' is set, 'patterns' should be omitted.
+	 */
+	patterns?: string[];
+	/**
+	 * Built-in file group category (e.g. 'typescript', 'ci-workflows', etc). Mutually exclusive with 'patterns'.
+	 */
+	category?:
+	| 'typescript'
+	| 'ci-workflows'
+	| 'documentation'
+	| 'agent-instructions'
+	| 'git'
+	| 'code-quality'
+	| 'package-management'
+	| 'vscode-settings'
+	| 'testing'
+	| 'building';
+	/**
+	 * Merge strategy configuration for matched files.
+	 */
 	strategy: MergeStrategyConfig;
-	priority?: number; // Higher priority rules override lower ones
+	/**
+	 * Optional: Higher priority rules override lower ones.
+	 */
+	priority?: number;
+	/**
+	 * Optional: Name of the template to use as the primary source for this rule.
+	 */
+	primarySource?: string;
 }
 
 export interface WeaverConfig {

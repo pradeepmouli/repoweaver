@@ -1,13 +1,70 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { simpleGit, SimpleGit } from 'simple-git';
-import { TemplateProcessingResult, TemplateRepository } from './types';
+import { FilePatternMergeStrategy, TemplateProcessingResult, TemplateRepository, WeaverConfig } from './types';
+/**
+ * Pure function to resolve which template's file to use based on mergeStrategies and primarySource.
+ * Used for testing and core merge logic.
+ * @param filePath - The file being processed (e.g. 'tsconfig.json')
+ * @param config - The loaded WeaverConfig
+ * @param filesFromTemplates - Map of template name to { [filePath]: content }
+ * @returns { content, source, warning? }
+ */
+export function applyMergeStrategies(
+	filePath: string,
+	config: WeaverConfig,
+	filesFromTemplates: Record<string, Record<string, string>>
+): { content: string | undefined; source: string | undefined; warning?: string; } {
+	if (!config.mergeStrategies) return { content: undefined, source: undefined };
+	// Find the first matching merge strategy for this file
+	const match = config.mergeStrategies.find((rule: FilePatternMergeStrategy) => {
+		if (rule.patterns && rule.patterns.some((pattern) => matchPattern(filePath, pattern))) {
+			return true;
+		}
+		// TODO: Add category support in later tasks
+		return false;
+	});
+	if (!match) return { content: undefined, source: undefined };
+	// If primarySource is set, prefer that template
+	if (match.primarySource) {
+		const primaryFiles = filesFromTemplates[match.primarySource];
+		if (primaryFiles && primaryFiles[filePath] !== undefined) {
+			return { content: primaryFiles[filePath], source: match.primarySource };
+		}
+		// Fallback: use any available template, but warn
+		for (const [template, files] of Object.entries(filesFromTemplates)) {
+			if (files[filePath] !== undefined) {
+				return {
+					content: files[filePath],
+					source: template,
+					warning: `Warning: primary source '${match.primarySource}' does not provide '${filePath}', using '${template}' instead.`
+				};
+			}
+		}
+		return { content: undefined, source: undefined, warning: `Warning: primary source '${match.primarySource}' does not provide '${filePath}', and no other template provides it.` };
+	}
+	// No primarySource: use first available template in config.templates order
+	for (const template of config.templates) {
+		const name = typeof template === 'string' ? template : template.name;
+		const files = filesFromTemplates[name];
+		if (files && files[filePath] !== undefined) {
+			return { content: files[filePath], source: name };
+		}
+	}
+	return { content: undefined, source: undefined };
+}
+
+function matchPattern(filePath: string, pattern: string): boolean {
+	// Simple glob: '*' matches any chars except '/', '**' matches any chars
+	const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*') + '$');
+	return regex.test(filePath);
+}
 
 export class TemplateManager {
 	private git: SimpleGit;
 	private tempDir: string;
 
-	constructor() {
+	constructor () {
 		this.git = simpleGit();
 		this.tempDir = path.join(process.cwd(), '.repoweaver-temp');
 	}

@@ -1,0 +1,134 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://raw.githubusercontent.com/pradeepmouli/repoweaver/master/schemas/category.schema.json",
+	"title": "RepoWeaver Category Canonical Lists",
+	"description": "Pre-defined canonical file pattern lists for common categories",
+	"type": "object",
+	"properties": {
+		"typescript": {
+			"type": "array",
+			"description": "TypeScript configuration files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				"tsconfig.json",
+				"tsconfig.*.json"
+			]
+		},
+		"ci-workflows": {
+			"type": "array",
+			"description": "CI/CD workflow and action files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				".github/workflows/*",
+				".github/actions/*"
+			]
+		},
+		"documentation": {
+			"type": "array",
+			"description": "Documentation files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				"README.md"
+			]
+		},
+		"agent-instructions": {
+			"type": "array",
+			"description": "AI agent instruction files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				"AGENTS.md",
+				".github/instructions/*",
+				".github/prompts/*"
+			]
+		},
+		"git": {
+			"type": "array",
+			"description": "Git configuration files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				".gitignore",
+				".gitattributes",
+				".git/hooks/*"
+			]
+		},
+		"code-quality": {
+			"type": "array",
+			"description": "Code quality tool configuration files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				".eslintrc.*",
+				".prettierrc.*",
+				".editorconfig"
+			]
+		},
+		"package-management": {
+			"type": "array",
+			"description": "Package management files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				"package.json",
+				"package-lock.json",
+				"yarn.lock",
+				"pnpm-lock.yaml"
+			]
+		},
+		"vscode-settings": {
+			"type": "array",
+			"description": "VS Code workspace settings",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				".vscode/*"
+			]
+		},
+		"testing": {
+			"type": "array",
+			"description": "Test configurations and test files",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				"jest.config.*",
+				"vitest.config.*",
+				"*.test.*",
+				"*.spec.*",
+				"tests/**",
+				".github/workflows/test*"
+			]
+		},
+		"building": {
+			"type": "array",
+			"description": "Build system configs and artifacts",
+			"items": {
+				"type": "string"
+			},
+			"default": [
+				"webpack.*",
+				"rollup.config.*",
+				"vite.config.*",
+				"tsup.config.*",
+				"esbuild.*",
+				"babel.config.*",
+				".github/workflows/build*",
+				"dist/**",
+				"build/**"
+			]
+		}
+	},
+	"additionalProperties": false
+}

@@ -120,6 +120,24 @@ RepoWeaver supports configuration files to make template management easier:
 }
 ```
 
+#### Categories and primary sources
+
+- You can target built-in file groups using `category` instead of explicit `patterns` in `mergeStrategies`.
+- Each rule can optionally set a `primarySource` to designate which template is authoritative for those files.
+
+Example:
+
+```json
+{
+	"mergeStrategies": [
+		{ "category": "testing", "strategy": { "type": "skip" }, "priority": 210 },
+		{ "category": "building", "strategy": { "type": "merge" }, "primarySource": "shared-config-template", "priority": 205 }
+	]
+}
+```
+
+Canonical lists for categories live in `schemas/category.schema.json`. Update that file to add or refine default patterns per category.
+
 #### `.weaverignore`
 
 ```

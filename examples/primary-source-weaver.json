@@ -1,0 +1,103 @@
+{
+	"name": "my-fullstack-app",
+	"description": "Example configuration showing primary source designation for multi-template repositories",
+	"templates": [
+		{
+			"url": "https://github.com/my-org/base-template.git",
+			"name": "base-template",
+			"branch": "main"
+		},
+		{
+			"url": "https://github.com/my-org/frontend-template.git",
+			"name": "frontend-template",
+			"branch": "main"
+		},
+		{
+			"url": "https://github.com/my-org/backend-template.git",
+			"name": "backend-template",
+			"branch": "main"
+		}
+	],
+	"mergeStrategies": [
+		{
+			"category": "typescript",
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "base-template"
+		},
+		{
+			"category": "ci-workflows",
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "base-template"
+		},
+		{
+			"category": "documentation",
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "frontend-template"
+		},
+		{
+			"category": "agent-instructions",
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "base-template"
+		},
+		{
+			"category": "git",
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "base-template"
+		},
+		{
+			"category": "code-quality",
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "base-template"
+		},
+		{
+			"patterns": [
+				"src/**/*.test.ts",
+				"tests/**/*.ts"
+			],
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "base-template",
+			"priority": 150
+		},
+		{
+			"patterns": [
+				".env.example"
+			],
+			"strategy": {
+				"type": "overwrite"
+			},
+			"primarySource": "backend-template",
+			"priority": 100
+		},
+		{
+			"patterns": [
+				"docs/**/*.md"
+			],
+			"strategy": {
+				"type": "merge"
+			},
+			"primarySource": "frontend-template",
+			"priority": 120
+		}
+	],
+	"mergeStrategy": "merge",
+	"excludePatterns": [
+		"node_modules/**",
+		"dist/**",
+		".git/**"
+	],
+	"autoUpdate": true
+}

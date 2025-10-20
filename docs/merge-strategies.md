@@ -158,6 +158,73 @@ Configure different merge strategies for different file patterns:
 - `**` matches any characters including `/`
 - Higher priority numbers take precedence
 
+## Categories (built-in)
+
+Instead of listing patterns, you can target a built-in category that maps to a maintained set of patterns. These canonical lists live in `schemas/category.schema.json` and can evolve over time without changing your config.
+
+Available categories:
+
+- typescript
+- ci-workflows
+- documentation
+- agent-instructions
+- git
+- code-quality
+- package-management
+- vscode-settings
+- testing
+- building
+
+Example using a category:
+
+```json
+{
+	"mergeStrategies": [
+		{
+			"category": "testing",
+			"strategy": { "type": "skip" },
+			"priority": 210
+		}
+	]
+}
+```
+
+
+For the exact default patterns per category, see:
+- `schemas/category.schema.json`
+
+## Contributing or Updating Categories
+
+To add or update a category:
+
+1. Edit `schemas/category.schema.json` and add or modify the relevant category's `default` array.
+2. Run the validation script to check your changes:
+
+	```bash
+	npx tsx scripts/validate-schema.ts
+	```
+
+This script uses [Zod](https://zod.dev/) to validate the structure and defaults of the canonical lists. If you add a new category, update both the JSON schema and the Zod schema in `scripts/validate-schema.ts`.
+
+## Primary source per rule
+
+Each `mergeStrategies` rule can optionally designate a `primarySource`. When multiple templates provide the same file, the primary source wins for files matched by that rule. If the primary template doesn’t provide the file, RepoWeaver falls back to other templates (and notes a warning in the PR summary).
+
+Example with category and primarySource:
+
+```json
+{
+	"mergeStrategies": [
+		{
+			"category": "building",
+			"strategy": { "type": "merge" },
+			"primarySource": "shared-config-template",
+			"priority": 205
+		}
+	]
+}
+```
+
 ## Custom Merge Strategies
 
 Create your own merge implementation:

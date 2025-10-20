@@ -50,6 +50,9 @@ program
 	.option('--remote <url>', 'Add git remote origin')
 	.option('--exclude <pattern>', 'Exclude patterns', collect, [])
 	.option('--merge-strategy <strategy>', 'Merge strategy: overwrite|merge|skip', 'merge')
+	.option('--primary-source <template>', 'Set primary source template name for a file pattern (use with --pattern)')
+	.option('--pattern <glob>', 'File glob pattern to apply with --primary-source (repeatable)', collect, [])
+	.option('--category <name>', 'Built-in category to apply with --primary-source')
 	.action(async (name, targetPath, options) => {
 		try {
 			// Load configuration from files if they exist
@@ -60,10 +63,10 @@ program
 			const templates: TemplateRepository[] =
 				options.template.length > 0
 					? options.template.map((url: string) => ({
-							url,
-							name: extractRepoName(url),
-							branch: options.branch,
-					  }))
+						url,
+						name: extractRepoName(url),
+						branch: options.branch,
+					}))
 					: config.templates;
 
 			if (templates.length === 0) {
@@ -73,6 +76,17 @@ program
 			}
 
 			// Merge configuration with command line options
+			// Optionally augment config with a quick primary source rule from CLI
+			if (options.primarySource && (options.pattern.length > 0 || options.category)) {
+				const rule: any = {
+					strategy: { type: options.mergeStrategy || config.mergeStrategy },
+					primarySource: options.primarySource,
+				};
+				if (options.pattern.length > 0) rule.patterns = options.pattern;
+				if (options.category) rule.category = options.category;
+				(config as WeaverConfig).mergeStrategies = [rule, ...(config.mergeStrategies || [])];
+			}
+
 			const bootstrapOptions: BootstrapOptions = {
 				targetPath,
 				templates,
@@ -113,6 +127,9 @@ program
 	.option('-s, --subdir <path>', 'Use subdirectory from template')
 	.option('--exclude <pattern>', 'Exclude patterns', collect, [])
 	.option('--merge-strategy <strategy>', 'Merge strategy: overwrite|merge|skip', 'merge')
+	.option('--primary-source <template>', 'Set primary source template name for a file pattern (use with --pattern)')
+	.option('--pattern <glob>', 'File glob pattern to apply with --primary-source (repeatable)', collect, [])
+	.option('--category <name>', 'Built-in category to apply with --primary-source')
 	.action(async (targetPath, options) => {
 		try {
 			// Load configuration from files if they exist
@@ -123,10 +140,10 @@ program
 			const templates: TemplateRepository[] =
 				options.template.length > 0
 					? options.template.map((url: string) => ({
-							url,
-							name: extractRepoName(url),
-							branch: options.branch,
-					  }))
+						url,
+						name: extractRepoName(url),
+						branch: options.branch,
+					}))
 					: config.templates;
 
 			if (templates.length === 0) {
@@ -136,6 +153,17 @@ program
 			}
 
 			// Merge configuration with command line options
+			// Optionally augment config with a quick primary source rule from CLI
+			if (options.primarySource && (options.pattern.length > 0 || options.category)) {
+				const rule: any = {
+					strategy: { type: options.mergeStrategy || config.mergeStrategy },
+					primarySource: options.primarySource,
+				};
+				if (options.pattern.length > 0) rule.patterns = options.pattern;
+				if (options.category) rule.category = options.category;
+				(config as WeaverConfig).mergeStrategies = [rule, ...(config.mergeStrategies || [])];
+			}
+
 			const bootstrapOptions: BootstrapOptions = {
 				targetPath,
 				templates,
