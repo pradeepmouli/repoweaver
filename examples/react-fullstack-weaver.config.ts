@@ -52,6 +52,17 @@ const config: WeaverConfig = {
 
 	mergeStrategies: [
 		{
+			category: 'testing',
+			strategy: { type: 'skip' },
+			priority: 210,
+		},
+		{
+			category: 'building',
+			strategy: { type: 'merge' },
+			primarySource: 'shared-config-template',
+			priority: 205,
+		},
+		{
 			patterns: ['package.json'],
 			strategy: {
 				type: 'plugin',

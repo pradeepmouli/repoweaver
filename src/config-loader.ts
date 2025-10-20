@@ -5,7 +5,7 @@ import { FilePatternMergeStrategy, MergeStrategyConfig, TemplateRepository, Weav
 export class ConfigLoader {
 	private basePath: string;
 
-	constructor(basePath: string = process.cwd()) {
+	constructor (basePath: string = process.cwd()) {
 		this.basePath = basePath;
 	}
 
@@ -91,7 +91,7 @@ export class ConfigLoader {
 			try {
 				const ts = require('typescript');
 				const tsContent = await fs.readFile(configPath, 'utf-8');
-				
+
 				// Compile TypeScript to JavaScript
 				const result = ts.transpile(tsContent, {
 					module: ts.ModuleKind.CommonJS,
@@ -107,9 +107,9 @@ export class ConfigLoader {
 				try {
 					// Clear require cache
 					delete require.cache[require.resolve(tempJsPath)];
-					
+
 					const configModule = require(tempJsPath);
-					const config = typeof configModule === 'function' ? configModule() : 
+					const config = typeof configModule === 'function' ? configModule() :
 						configModule.default || configModule;
 
 					return this.normalizeConfig(config);
@@ -127,7 +127,7 @@ export class ConfigLoader {
 		// If ts-node is available, use it directly
 		delete require.cache[require.resolve(configPath)];
 		const configModule = require(configPath);
-		const config = typeof configModule === 'function' ? configModule() : 
+		const config = typeof configModule === 'function' ? configModule() :
 			configModule.default || configModule;
 
 		return this.normalizeConfig(config);
@@ -152,7 +152,7 @@ export class ConfigLoader {
 		// Normalize merge strategies
 		const mergeStrategies = this.normalizeMergeStrategies(processedConfig.mergeStrategies || []);
 
-		return {
+		const normalized: WeaverConfig = {
 			name: processedConfig.name,
 			description: processedConfig.description,
 			templates,
@@ -169,6 +169,11 @@ export class ConfigLoader {
 			variables: processedConfig.variables || {},
 			plugins: processedConfig.plugins || [],
 		};
+
+		// Validate primarySource references against template names
+		this.validatePrimarySources(normalized);
+
+		return normalized;
 	}
 
 	private processVariables(config: any): any {
@@ -207,8 +212,14 @@ export class ConfigLoader {
 
 	private normalizeMergeStrategies(strategies: any[]): FilePatternMergeStrategy[] {
 		return strategies.map((strategy, index) => {
-			// Normalize patterns
-			const patterns = Array.isArray(strategy.patterns) ? strategy.patterns : [strategy.patterns];
+			// Normalize either patterns or category
+			let patterns: string[] | undefined;
+			let category: FilePatternMergeStrategy['category'];
+			if (strategy.category) {
+				category = strategy.category;
+			} else if (strategy.patterns) {
+				patterns = Array.isArray(strategy.patterns) ? strategy.patterns : [strategy.patterns];
+			}
 
 			// Normalize strategy config
 			let strategyConfig: MergeStrategyConfig;
@@ -218,12 +229,30 @@ export class ConfigLoader {
 				strategyConfig = strategy.strategy;
 			}
 
-			return {
-				patterns,
+			const normalized: FilePatternMergeStrategy = {
 				strategy: strategyConfig,
-				priority: strategy.priority || index,
+				priority: strategy.priority ?? index,
 			};
+			if (patterns) normalized.patterns = patterns;
+			if (category) normalized.category = category;
+			if (strategy.primarySource) normalized.primarySource = strategy.primarySource;
+			return normalized;
 		});
+	}
+
+	private validatePrimarySources(config: WeaverConfig): void {
+		if (!config.mergeStrategies || config.templates.length === 0) return;
+		const templateNames = new Set(
+			config.templates.map((t) => (typeof t === 'string' ? this.extractRepoName(t) : t.name))
+		);
+		for (const rule of config.mergeStrategies) {
+			if (rule.primarySource && !templateNames.has(rule.primarySource)) {
+				throw new Error(
+					`Invalid primarySource '${rule.primarySource}'. It must match one of the configured template names: ${[...templateNames].join(', ')
+					}`
+				);
+			}
+		}
 	}
 
 	private async loadWeaverIgnore(): Promise<WeaverIgnoreConfig> {

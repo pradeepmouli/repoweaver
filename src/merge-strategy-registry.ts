@@ -7,7 +7,7 @@ export class MergeStrategyRegistry {
 	private plugins: Map<string, MergePlugin> = new Map();
 	private customStrategies: Map<string, MergeStrategy> = new Map();
 
-	constructor() {
+	constructor () {
 		this.loadBuiltinStrategies();
 	}
 
@@ -84,8 +84,16 @@ export class MergeStrategyRegistry {
 
 		// Find the first matching strategy
 		for (const strategyConfig of sortedStrategies) {
+			// Match explicit patterns
 			if (this.matchesPatterns(filePath, strategyConfig.patterns)) {
 				return await this.resolveStrategy(strategyConfig.strategy);
+			}
+			// Match category-derived patterns
+			if (strategyConfig.category) {
+				const catPatterns = this.getCategoryPatterns(strategyConfig.category);
+				if (this.matchesPatterns(filePath, catPatterns)) {
+					return await this.resolveStrategy(strategyConfig.strategy);
+				}
 			}
 		}
 
@@ -134,7 +142,8 @@ export class MergeStrategyRegistry {
 	// Cache for compiled regex patterns
 	private patternRegexCache: Map<string, RegExp> = new Map();
 
-	private matchesPatterns(filePath: string, patterns: string[]): boolean {
+	private matchesPatterns(filePath: string, patterns?: string[]): boolean {
+		if (!patterns || patterns.length === 0) return false;
 		return patterns.some((pattern) => {
 			let regex = this.patternRegexCache.get(pattern);
 			if (!regex) {
@@ -143,6 +152,33 @@ export class MergeStrategyRegistry {
 			}
 			return regex.test(filePath);
 		});
+	}
+
+	private getCategoryPatterns(category: NonNullable<FilePatternMergeStrategy['category']>): string[] {
+		switch (category) {
+			case 'typescript':
+				return ['tsconfig.json', 'tsconfig.*.json'];
+			case 'ci-workflows':
+				return ['.github/workflows/**'];
+			case 'documentation':
+				return ['README.md', 'docs/**', '*.md'];
+			case 'agent-instructions':
+				return ['AGENTS.md'];
+			case 'git':
+				return ['.gitignore', '.gitattributes', '.gitmodules'];
+			case 'code-quality':
+				return ['.eslintrc*', 'eslint.config.*', '.prettierrc*', '.editorconfig'];
+			case 'package-management':
+				return ['package.json', 'pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', '.npmrc'];
+			case 'vscode-settings':
+				return ['.vscode/**'];
+			case 'testing':
+				return ['jest.config.*', 'vitest.config.*', '*.test.*', '*.spec.*', 'tests/**', '.github/workflows/test*'];
+			case 'building':
+				return ['webpack.*', 'rollup.config.*', 'vite.config.*', 'tsup.config.*', 'esbuild.*', 'babel.config.*', '.github/workflows/build*', 'dist/**', 'build/**'];
+			default:
+				return [];
+		}
 	}
 
 	async cleanup(): Promise<void> {

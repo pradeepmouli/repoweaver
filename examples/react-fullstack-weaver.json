@@ -1,5 +1,5 @@
 {
-	"$schema": "https://raw.githubusercontent.com/pradeepmouli/repoweaver/master/schemas/weaver.schema.json",
+	"$schema": "../schemas/weaver.schema.json",
 	"name": "react-fullstack-project",
 	"description": "A full-stack React application with advanced merge strategies",
 	"templates": [
@@ -19,6 +19,17 @@
 	],
 	"mergeStrategy": "merge",
 	"mergeStrategies": [
+		{
+			"category": "testing",
+			"strategy": { "type": "skip" },
+			"priority": 210
+		},
+		{
+			"category": "building",
+			"strategy": { "type": "merge" },
+			"primarySource": "shared-config-template",
+			"priority": 205
+		},
 		{
 			"patterns": [
 				"package.json"

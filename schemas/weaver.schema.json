@@ -1,262 +1,113 @@
 {
-	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://raw.githubusercontent.com/pradeepmouli/repoweaver/master/schemas/weaver.schema.json",
-	"title": "RepoWeaver Configuration",
-	"description": "Configuration schema for RepoWeaver template repository management",
-	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string",
-			"description": "Name of the project or repository"
-		},
-		"description": {
-			"type": "string",
-			"description": "Description of the project"
-		},
-		"templates": {
-			"type": "array",
-			"description": "List of template repositories to apply",
-			"items": {
-				"oneOf": [
-					{
-						"type": "string",
-						"format": "uri",
-						"description": "Template repository URL (uses default branch and root directory)"
-					},
-					{
-						"type": "object",
-						"properties": {
-							"url": {
-								"type": "string",
-								"format": "uri",
-								"description": "Template repository URL"
-							},
-							"name": {
-								"type": "string",
-								"description": "Name for the template (used for identification)"
-							},
-							"branch": {
-								"type": "string",
-								"description": "Branch to use from the template repository",
-								"default": "main"
-							},
-							"subDirectory": {
-								"type": "string",
-								"description": "Subdirectory within the template repository to use"
-							}
-						},
-						"required": [
-							"url",
-							"name"
-						],
-						"additionalProperties": false
-					}
-				]
-			},
-			"minItems": 1
-		},
-		"mergeStrategy": {
-			"oneOf": [
-				{
-					"type": "string",
-					"enum": [
-						"overwrite",
-						"merge",
-						"skip"
-					],
-					"description": "Default merge strategy for all files"
-				},
-				{
-					"$ref": "#/definitions/mergeStrategyConfig"
-				}
-			],
-			"default": "merge"
-		},
-		"mergeStrategies": {
-			"type": "array",
-			"description": "File pattern-based merge strategies with priority ordering",
-			"items": {
-				"$ref": "#/definitions/filePatternMergeStrategy"
-			}
-		},
-		"excludePatterns": {
-			"type": "array",
-			"description": "Glob patterns for files to exclude from processing",
-			"items": {
-				"type": "string"
-			},
-			"default": []
-		},
-		"includePatterns": {
-			"type": "array",
-			"description": "Glob patterns for files to include (overrides excludePatterns)",
-			"items": {
-				"type": "string"
-			},
-			"default": []
-		},
-		"autoUpdate": {
-			"type": "boolean",
-			"description": "Automatically update repository when templates change",
-			"default": false
-		},
-		"createRepository": {
-			"type": "boolean",
-			"description": "Create a new repository on GitHub",
-			"default": false
-		},
-		"privateRepository": {
-			"type": "boolean",
-			"description": "Make the created repository private",
-			"default": false
-		},
-		"initGit": {
-			"type": "boolean",
-			"description": "Initialize git repository in the target directory",
-			"default": false
-		},
-		"addRemote": {
-			"type": "string",
-			"description": "Git remote URL to add as origin (supports variable substitution)"
-		},
-		"hooks": {
-			"type": "object",
-			"description": "Shell commands to run at various stages",
-			"properties": {
-				"preBootstrap": {
-					"type": "array",
-					"description": "Commands to run before starting the bootstrap process",
-					"items": {
-						"type": "string"
-					}
-				},
-				"postBootstrap": {
-					"type": "array",
-					"description": "Commands to run after completing the bootstrap process",
-					"items": {
-						"type": "string"
-					}
-				},
-				"preTemplate": {
-					"type": "array",
-					"description": "Commands to run before processing each template",
-					"items": {
-						"type": "string"
-					}
-				},
-				"postTemplate": {
-					"type": "array",
-					"description": "Commands to run after processing each template",
-					"items": {
-						"type": "string"
-					}
-				}
-			},
-			"additionalProperties": false
-		},
-		"variables": {
-			"type": "object",
-			"description": "Variables for substitution in configuration values and hooks",
-			"additionalProperties": {
-				"type": "string"
-			}
-		},
-		"plugins": {
-			"type": "array",
-			"description": "List of plugin names to load for additional merge strategies",
-			"items": {
-				"type": "string"
-			},
-			"default": []
-		}
-	},
-	"required": [
-		"templates"
-	],
-	"additionalProperties": false,
-	"definitions": {
-		"mergeStrategyConfig": {
-			"type": "object",
-			"description": "Configuration for a merge strategy",
-			"properties": {
-				"type": {
-					"type": "string",
-					"enum": [
-						"overwrite",
-						"merge",
-						"skip",
-						"custom",
-						"plugin",
-						"json",
-						"yaml",
-						"markdown",
-						"package-json",
-						"config",
-						"code"
-					],
-					"description": "Type of merge strategy to use"
-				},
-				"implementation": {
-					"type": "string",
-					"description": "For custom: path to implementation file, for plugin: plugin name"
-				},
-				"options": {
-					"type": "object",
-					"description": "Options passed to the merge strategy",
-					"additionalProperties": true
-				}
-			},
-			"required": [
-				"type"
-			],
-			"additionalProperties": false,
-			"allOf": [
-				{
-					"if": {
-						"properties": {
-							"type": {
-								"enum": [
-									"custom",
-									"plugin"
-								]
-							}
-						}
-					},
-					"then": {
-						"required": [
-							"implementation"
-						]
-					}
-				}
-			]
-		},
-		"filePatternMergeStrategy": {
-			"type": "object",
-			"description": "File pattern-based merge strategy rule",
-			"properties": {
-				"patterns": {
-					"type": "array",
-					"description": "Glob patterns to match files against",
-					"items": {
-						"type": "string"
-					},
-					"minItems": 1
-				},
-				"strategy": {
-					"$ref": "#/definitions/mergeStrategyConfig"
-				},
-				"priority": {
-					"type": "integer",
-					"description": "Priority for this rule (higher numbers take precedence)",
-					"minimum": 0,
-					"default": 100
-				}
-			},
-			"required": [
-				"patterns",
-				"strategy"
-			],
-			"additionalProperties": false
-		}
-	}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/pradeepmouli/repoweaver/master/schemas/weaver.schema.json",
+  "title": "RepoWeaver Configuration",
+  "description": "Configuration schema for RepoWeaver template repository management",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "description": "Name of the project or repository" },
+    "description": { "type": "string", "description": "Description of the project" },
+    "templates": {
+      "type": "array",
+      "description": "List of template repositories to apply",
+      "items": {
+        "oneOf": [
+          { "type": "string", "format": "uri", "description": "Template repository URL (uses default branch and root directory)" },
+          {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string", "format": "uri", "description": "Template repository URL" },
+              "name": { "type": "string", "description": "Name for the template (used for identification)" },
+              "branch": { "type": "string", "description": "Branch to use from the template repository", "default": "main" },
+              "subDirectory": { "type": "string", "description": "Subdirectory within the template repository to use" }
+            },
+            "required": ["url", "name"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1
+    },
+    "mergeStrategy": {
+      "oneOf": [
+        { "type": "string", "enum": ["overwrite", "merge", "skip"], "description": "Default merge strategy for all files" },
+        { "$ref": "#/definitions/mergeStrategyConfig" }
+      ],
+      "default": "merge"
+    },
+    "mergeStrategies": { "type": "array", "description": "File pattern-based merge strategies with priority ordering", "items": { "$ref": "#/definitions/filePatternMergeStrategy" } },
+    "excludePatterns": { "type": "array", "description": "Glob patterns for files to exclude from processing", "items": { "type": "string" }, "default": [] },
+    "includePatterns": { "type": "array", "description": "Glob patterns for files to include (overrides excludePatterns)", "items": { "type": "string" }, "default": [] },
+    "autoUpdate": { "type": "boolean", "description": "Automatically update repository when templates change", "default": false },
+    "createRepository": { "type": "boolean", "description": "Create a new repository on GitHub", "default": false },
+    "privateRepository": { "type": "boolean", "description": "Make the created repository private", "default": false },
+    "initGit": { "type": "boolean", "description": "Initialize git repository in the target directory", "default": false },
+    "addRemote": { "type": "string", "description": "Git remote URL to add as origin (supports variable substitution)" },
+    "hooks": {
+      "type": "object",
+      "description": "Shell commands to run at various stages",
+      "properties": {
+        "preBootstrap": { "type": "array", "description": "Commands to run before starting the bootstrap process", "items": { "type": "string" } },
+        "postBootstrap": { "type": "array", "description": "Commands to run after completing the bootstrap process", "items": { "type": "string" } },
+        "preTemplate": { "type": "array", "description": "Commands to run before processing each template", "items": { "type": "string" } },
+        "postTemplate": { "type": "array", "description": "Commands to run after processing each template", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "variables": { "type": "object", "description": "Variables for substitution in configuration values and hooks", "additionalProperties": { "type": "string" } },
+    "plugins": { "type": "array", "description": "List of plugin names to load for additional merge strategies", "items": { "type": "string" }, "default": [] }
+  },
+  "required": ["templates"],
+  "additionalProperties": false,
+  "definitions": {
+    "templateReference": {
+      "oneOf": [
+        { "type": "string", "description": "Template name or URL from templates array" },
+        { "type": "integer", "description": "Zero-based index into templates array", "minimum": 0 }
+      ]
+    },
+    "primarySourceRule": {
+      "type": "object",
+      "description": "Custom primary source rule with file patterns and template designation",
+      "properties": {
+        "patterns": { "type": "array", "description": "Glob patterns to match files against", "items": { "type": "string" }, "minItems": 1 },
+        "template": { "$ref": "#/definitions/templateReference", "description": "Template to use as primary source for these patterns" },
+        "priority": { "type": "integer", "description": "Priority for this rule (higher numbers take precedence)", "minimum": 0, "default": 100 }
+      },
+      "required": ["patterns", "template"],
+      "additionalProperties": false
+    },
+    "canonicalLists": { "$ref": "./category.schema.json" },
+    "mergeStrategyConfig": {
+      "type": "object",
+      "description": "Configuration for a merge strategy",
+      "properties": {
+        "type": { "type": "string", "enum": ["overwrite", "merge", "skip", "custom", "plugin", "json", "yaml", "markdown", "package-json", "config", "code"], "description": "Type of merge strategy to use" },
+        "implementation": { "type": "string", "description": "For custom: path to implementation file, for plugin: plugin name" },
+        "options": { "type": "object", "description": "Options passed to the merge strategy", "additionalProperties": true }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "allOf": [
+        { "if": { "properties": { "type": { "enum": ["custom", "plugin"] } } }, "then": { "required": ["implementation"] } }
+      ]
+    },
+    "filePatternMergeStrategy": {
+      "type": "object",
+      "description": "File pattern-based merge strategy rule with optional primary source designation",
+      "properties": {
+        "patterns": { "type": "array", "description": "Glob patterns to match files against", "items": { "type": "string" }, "minItems": 1 },
+        "category": { "type": "string", "description": "Category name for a built-in file pattern group (e.g. 'typescript', 'ci-workflows', etc.)", "enum": ["typescript", "ci-workflows", "documentation", "agent-instructions", "git", "code-quality", "package-management", "vscode-settings", "testing", "building"] },
+        "strategy": { "$ref": "#/definitions/mergeStrategyConfig" },
+        "priority": { "type": "integer", "description": "Priority for this rule (higher numbers take precedence)", "minimum": 0, "default": 100 },
+        "primarySource": { "$ref": "#/definitions/templateReference", "description": "Template to use as the authoritative source for files matched by this rule" }
+      },
+      "required": ["strategy"],
+      "oneOf": [ { "required": ["patterns"] }, { "required": ["category"] } ],
+      "additionalProperties": false
+    },
+    "propertyNames": {
+      "enum": ["typescript-config", "ci-workflows", "documentation", "git-config", "code-quality", "package-management", "vscode-settings"]
+    }
+  }
 }
