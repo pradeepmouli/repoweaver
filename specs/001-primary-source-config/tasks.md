@@ -9,40 +9,40 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Create feature directory structure per plan.md
-- [ ] T002 Initialize tasks.md in specs/001-primary-source-config/tasks.md
+- [x] T001 Create feature directory structure per plan.md
+- [x] T002 Initialize tasks.md in specs/001-primary-source-config/tasks.md
 
 ## Phase 2: Foundational Tasks
 
-- [ ] T003 Refactor TypeScript types for mergeStrategies in src/types.ts
-- [ ] T004 Update schema to support category and primarySource in schemas/weaver.schema.json
-- [ ] T005 Update example config for primary source in examples/primary-source-weaver.json
+- [x] T003 Refactor TypeScript types for mergeStrategies in src/types.ts
+- [x] T004 Update schema to support category and primarySource in schemas/weaver.schema.json
+- [x] T005 Update example config for primary source in examples/primary-source-weaver.json
 
 ## Phase 3: User Story 1 (P1) - Configure Single Template as Authoritative Source
 
-- [ ] T006 [P] [US1] Implement primary source resolution logic in src/template-manager.ts
-- [ ] T007 [US1] Add validation for template references in src/config-loader.ts
-- [ ] T008 [US1] Add warning logic for missing files in primary source in src/template-manager.ts
-- [ ] T009 [US1] Update CLI to support primary source config in src/cli.ts
-- [ ] T010 [US1] Add test for single template authoritative source in test/template-manager.test.ts
+- [x] T006 [P] [US1] Implement primary source resolution logic in src/template-manager.ts
+- [x] T007 [US1] Add validation for template references in src/config-loader.ts
+- [x] T008 [US1] Add warning logic for missing files in primary source in src/template-manager.ts
+- [x] T009 [US1] Update CLI to support primary source config in src/cli.ts
+- [x] T010 [US1] Add test for single template authoritative source in test/template-manager.test.ts
 
 ## Phase 4: User Story 2 (P2) - Use Schema-Defined Canonical List
 
-- [ ] T011 [P] [US2] Implement category-based primary source logic in src/template-manager.ts
-- [ ] T012 [US2] Add test for canonical list category in test/template-manager.test.ts
-- [ ] T013 [US2] Update documentation for canonical categories in docs/merge-strategies.md
+- [x] T011 [P] [US2] Implement category-based primary source logic in src/template-manager.ts
+- [x] T012 [US2] Add test for canonical list category in test/template-manager.test.ts
+- [x] T013 [US2] Update documentation for canonical categories in docs/merge-strategies.md
 
 ## Phase 5: User Story 3 (P3) - Override Primary Source per Repository
 
-- [ ] T014 [P] [US3] Implement per-repository primary source override in src/template-manager.ts
-- [ ] T015 [US3] Add CLI flag for primary source override in src/cli.ts
-- [ ] T016 [US3] Add test for repository-specific override in test/template-manager.test.ts
+- [x] T014 [P] [US3] Implement per-repository primary source override in src/template-manager.ts
+- [x] T015 [US3] Add CLI flag for primary source override in src/cli.ts
+- [x] T016 [US3] Add test for repository-specific override in test/template-manager.test.ts
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
-- [ ] T017 Update PR description generation to include primary source decisions in src/github-bootstrapper.ts
-- [ ] T018 Update schema-updates.md and docs/merge-strategies.md for final documentation
-- [ ] T019 Validate all template references and error handling in src/config-loader.ts
+- [x] T017 Update PR description generation to include primary source decisions in src/github-bootstrapper.ts
+- [x] T018 Update schema-updates.md and docs/merge-strategies.md for final documentation
+- [x] T019 Validate all template references and error handling in src/config-loader.ts
 
 ---
 
