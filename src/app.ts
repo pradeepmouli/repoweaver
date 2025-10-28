@@ -1,35 +1,35 @@
 import '@dotenvx/dotenvx/config';
-import express from 'express';
-import cors from 'cors';
 import { json, raw } from 'body-parser';
 import cookieParser from 'cookie-parser';
-import { DatabaseManager } from './database';
-import { logger } from './app-logger';
+import cors from 'cors';
+import express from 'express';
 import path from 'path';
+import { logger } from './app-logger';
+import { DatabaseManager } from './database';
 
 // Import route module factories
+import { createApiRouter } from './routes/api';
 import { createOAuthRouter } from './routes/oauth';
 import { createWebhookRouter } from './routes/webhooks';
-import { createApiRouter } from './routes/api';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Validate required environment variables
 const requiredEnvVars = [
-  'GITHUB_CLIENT_ID',
-  'GITHUB_CLIENT_SECRET',
-  'GITHUB_APP_ID',
-  'GITHUB_PRIVATE_KEY',
-  'GITHUB_WEBHOOK_SECRET',
-  'SESSION_ENCRYPTION_KEY'
+	'GITHUB_CLIENT_ID',
+	'GITHUB_CLIENT_SECRET',
+	'GITHUB_APP_ID',
+	'GITHUB_PRIVATE_KEY',
+	'GITHUB_WEBHOOK_SECRET',
+	'SESSION_ENCRYPTION_KEY'
 ];
 
 for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    logger.error(`Missing required environment variable: ${envVar}`);
-    process.exit(1);
-  }
+	if (!process.env[envVar]) {
+		logger.error(`Missing required environment variable: ${envVar}`);
+		process.exit(1);
+	}
 }
 
 // Database setup
@@ -44,59 +44,59 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  try {
-    // Check database connectivity
-    const dbCheck = database['db'].prepare('SELECT 1 as result').get();
-    
-    // Get pending jobs count
-    const pendingJobs = database.getPendingJobs(1000).length;
-    
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      database: dbCheck ? 'connected' : 'error',
-      workers: {
-        active: activeWorkers,
-        max: MAX_CONCURRENT_WORKERS,
-      },
-      jobs: {
-        pending: pendingJobs,
-      },
-    });
-  } catch (error) {
-    logger.error('Health check failed', { error });
-    res.status(503).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
+	try {
+		// Check database connectivity
+		const dbCheck = database['db'].prepare('SELECT 1 as result').get();
+
+		// Get pending jobs count
+		const pendingJobs = database.getPendingJobs(1000).length;
+
+		res.json({
+			status: 'ok',
+			timestamp: new Date().toISOString(),
+			database: dbCheck ? 'connected' : 'error',
+			workers: {
+				active: activeWorkers,
+				max: MAX_CONCURRENT_WORKERS,
+			},
+			jobs: {
+				pending: pendingJobs,
+			},
+		});
+	} catch (error) {
+		logger.error('Health check failed', { error });
+		res.status(503).json({
+			status: 'error',
+			timestamp: new Date().toISOString(),
+			error: error instanceof Error ? error.message : 'Unknown error',
+		});
+	}
 });
 
 // Mount route modules (pass database to factory functions)
 try {
-  logger.info('Mounting OAuth router...');
-  app.use('/auth', createOAuthRouter(database));
-  logger.info('OAuth router mounted successfully');
-  
-  logger.info('Mounting Webhook router...');
-  // Use raw body parser for webhooks (needed for signature verification)
-  const webhookRouter = createWebhookRouter(database);
-  app.use('/webhooks', raw({ type: 'application/json' }), webhookRouter);
-  logger.info('Webhook router mounted successfully');
-  
-  logger.info('Mounting API router...');
-  // Use JSON parser for API routes
-  app.use('/api', json(), createApiRouter(database));
-  logger.info('API router mounted successfully');
+	logger.info('Mounting OAuth router...');
+	app.use('/auth', createOAuthRouter(database));
+	logger.info('OAuth router mounted successfully');
+
+	logger.info('Mounting Webhook router...');
+	// Use raw body parser for webhooks (needed for signature verification)
+	const webhookRouter = createWebhookRouter(database);
+	app.use('/webhooks', raw({ type: 'application/json' }), webhookRouter);
+	logger.info('Webhook router mounted successfully');
+
+	logger.info('Mounting API router...');
+	// Use JSON parser for API routes
+	app.use('/api', json(), createApiRouter(database));
+	logger.info('API router mounted successfully');
 } catch (error) {
-  logger.error('Error mounting routers:', error);
-  throw error;
+	logger.error('Error mounting routers:', error);
+	throw error;
 }
 
 // Serve the web interface for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+	res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // ============================================================================
@@ -111,302 +111,302 @@ let workerInterval: NodeJS.Timeout | null = null;
  * Process a single background job
  */
 async function processJob(job: any): Promise<void> {
-  const jobId = job.id;
-  
-  try {
-    logger.info('Starting job processing', {
-      jobId,
-      type: job.type,
-    });
+	const jobId = job.id;
 
-    // Mark job as running
-    database.updateBackgroundJob(jobId, {
-      status: 'running',
-      started_at: Date.now(),
-    });
+	try {
+		logger.info('Starting job processing', {
+			jobId,
+			type: job.type,
+		});
 
-    // Parse job payload
-    const payload = JSON.parse(job.payload_json);
+		// Mark job as running
+		database.updateBackgroundJob(jobId, {
+			status: 'running',
+			started_at: Date.now(),
+		});
 
-    // Process based on job type
-    let result: any = null;
-    switch (job.type) {
-      case 'apply_templates':
-        result = await processApplyTemplatesJob(payload, false);
-        break;
+		// Parse job payload
+		const payload = JSON.parse(job.payload_json);
 
-      case 'preview_templates':
-        result = await processApplyTemplatesJob(payload, true);
-        break;
+		// Process based on job type
+		let result: any = null;
+		switch (job.type) {
+			case 'apply_templates':
+				result = await processApplyTemplatesJob(payload, false);
+				break;
 
-      default:
-        throw new Error(`Unknown job type: ${job.type}`);
-    }
+			case 'preview_templates':
+				result = await processApplyTemplatesJob(payload, true);
+				break;
 
-    // Mark job as completed
-    database.updateBackgroundJob(jobId, {
-      status: 'completed',
-      completed_at: Date.now(),
-    });
+			default:
+				throw new Error(`Unknown job type: ${job.type}`);
+		}
 
-    logger.info('Job completed successfully', {
-      jobId,
-      type: job.type,
-      result,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    // Increment attempts
-    const newAttempts = job.attempts + 1;
-    
-    if (newAttempts >= job.max_attempts) {
-      // Max attempts reached - mark as failed
-      database.updateBackgroundJob(jobId, {
-        status: 'failed',
-        attempts: newAttempts,
-        error_message: errorMessage,
-        completed_at: Date.now(),
-      });
+		// Mark job as completed
+		database.updateBackgroundJob(jobId, {
+			status: 'completed',
+			completed_at: Date.now(),
+		});
 
-      logger.error('Job failed after max attempts', {
-        jobId,
-        type: job.type,
-        attempts: newAttempts,
-        error: errorMessage,
-      });
-    } else {
-      // Retry later
-      const retryDelay = Math.pow(2, newAttempts) * 60 * 1000; // Exponential backoff
-      database.updateBackgroundJob(jobId, {
-        status: 'pending',
-        attempts: newAttempts,
-        scheduled_at: Date.now() + retryDelay,
-        error_message: errorMessage,
-      });
+		logger.info('Job completed successfully', {
+			jobId,
+			type: job.type,
+			result,
+		});
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.warn('Job failed, will retry', {
-        jobId,
-        type: job.type,
-        attempts: newAttempts,
-        retryIn: retryDelay / 1000 + 's',
-        error: errorMessage,
-      });
-    }
-  }
+		// Increment attempts
+		const newAttempts = job.attempts + 1;
+
+		if (newAttempts >= job.max_attempts) {
+			// Max attempts reached - mark as failed
+			database.updateBackgroundJob(jobId, {
+				status: 'failed',
+				attempts: newAttempts,
+				error_message: errorMessage,
+				completed_at: Date.now(),
+			});
+
+			logger.error('Job failed after max attempts', {
+				jobId,
+				type: job.type,
+				attempts: newAttempts,
+				error: errorMessage,
+			});
+		} else {
+			// Retry later
+			const retryDelay = Math.pow(2, newAttempts) * 60 * 1000; // Exponential backoff
+			database.updateBackgroundJob(jobId, {
+				status: 'pending',
+				attempts: newAttempts,
+				scheduled_at: Date.now() + retryDelay,
+				error_message: errorMessage,
+			});
+
+			logger.warn('Job failed, will retry', {
+				jobId,
+				type: job.type,
+				attempts: newAttempts,
+				retryIn: retryDelay / 1000 + 's',
+				error: errorMessage,
+			});
+		}
+	}
 }
 
 /**
  * Process an apply_templates job
  */
 async function processApplyTemplatesJob(payload: any, isPreview: boolean = false): Promise<any> {
-  const { repository, installation_id } = payload;
-  
-  logger.info('Processing template application job', {
-    owner: repository.owner,
-    repo: repository.name,
-    repoId: repository.id,
-    preview: isPreview,
-  });
+	const { repository, installation_id } = payload;
 
-  // Get repository configuration
-  const config = database.getRepositoryConfig(repository.id);
-  if (!config) {
-    throw new Error('Repository configuration not found');
-  }
+	logger.info('Processing template application job', {
+		owner: repository.owner,
+		repo: repository.name,
+		repoId: repository.id,
+		preview: isPreview,
+	});
 
-  // Parse configuration
-  const configData = JSON.parse(config.config_json);
-  if (!configData.templates || configData.templates.length === 0) {
-    logger.info('No templates configured for repository', {
-      owner: repository.owner,
-      repo: repository.name,
-    });
-    return { message: 'No templates configured' };
-  }
+	// Get repository configuration
+	const config = database.getRepositoryConfig(repository.id);
+	if (!config) {
+		throw new Error('Repository configuration not found');
+	}
 
-  // Get installation to create GitHub client
-  const installation = database.getInstallationByGithubId(installation_id);
-  if (!installation) {
-    throw new Error('Installation not found');
-  }
+	// Parse configuration
+	const configData = JSON.parse(config.config_json);
+	if (!configData.templates || configData.templates.length === 0) {
+		logger.info('No templates configured for repository', {
+			owner: repository.owner,
+			repo: repository.name,
+		});
+		return { message: 'No templates configured' };
+	}
 
-  // Create GitHub client with installation auth
-  const appId = process.env.GITHUB_APP_ID;
-  const privateKeyPath = process.env.GITHUB_PRIVATE_KEY_PATH;
-  if (!appId || !privateKeyPath) {
-    throw new Error('GitHub App credentials not configured');
-  }
+	// Get installation to create GitHub client
+	const installation = database.getInstallationByGithubId(installation_id);
+	if (!installation) {
+		throw new Error('Installation not found');
+	}
 
-  const fs = await import('fs');
-  const privateKey = fs.readFileSync(privateKeyPath, 'utf-8');
-  
-  const { GitHubClient } = await import('./github-client');
-  const { GitHubTemplateManager } = await import('./github-template-manager');
-  
-  const githubClient = new GitHubClient(appId, privateKey, installation_id);
+	// Create GitHub client with installation auth
+	const appId = process.env.GITHUB_APP_ID;
+	const privateKeyPath = process.env.GITHUB_PRIVATE_KEY_PATH;
+	if (!appId || !privateKeyPath) {
+		throw new Error('GitHub App credentials not configured');
+	}
 
-  const templateManager = new GitHubTemplateManager(githubClient);
+	const fs = await import('fs');
+	const privateKey = fs.readFileSync(privateKeyPath, 'utf-8');
 
-  // If preview mode, use preview method
-  if (isPreview) {
-    const previewResults = [];
-    for (const templateUrl of configData.templates) {
-      const template = {
-        url: typeof templateUrl === 'string' ? templateUrl : templateUrl.url,
-        name: typeof templateUrl === 'string' ? templateUrl : (templateUrl.name || templateUrl.url),
-        branch: typeof templateUrl === 'string' ? undefined : templateUrl.branch,
-        subDirectory: typeof templateUrl === 'string' ? undefined : templateUrl.subDirectory,
-      };
+	const { GitHubClient } = await import('./github-client');
+	const { GitHubTemplateManager } = await import('./github-template-manager');
 
-      const preview = await templateManager.previewTemplate(
-        template,
-        repository.owner,
-        repository.name,
-        configData.exclude_patterns || [],
-        configData.merge_strategy || 'merge',
-        configData.merge_strategies || [],
-        configData.plugins || []
-      );
+	const githubClient = new GitHubClient(appId, privateKey, installation_id);
 
-      previewResults.push({
-        template: template.name,
-        ...preview,
-      });
-    }
+	const templateManager = new GitHubTemplateManager(githubClient);
 
-    return { preview: true, results: previewResults };
-  }
+	// If preview mode, use preview method
+	if (isPreview) {
+		const previewResults = [];
+		for (const templateUrl of configData.templates) {
+			const template = {
+				url: typeof templateUrl === 'string' ? templateUrl : templateUrl.url,
+				name: typeof templateUrl === 'string' ? templateUrl : (templateUrl.name || templateUrl.url),
+				branch: typeof templateUrl === 'string' ? undefined : templateUrl.branch,
+				subDirectory: typeof templateUrl === 'string' ? undefined : templateUrl.subDirectory,
+			};
 
-  // Apply templates
-  const results = [];
-  for (const templateUrl of configData.templates) {
-    const template = {
-      url: typeof templateUrl === 'string' ? templateUrl : templateUrl.url,
-      name: typeof templateUrl === 'string' ? templateUrl : (templateUrl.name || templateUrl.url),
-      branch: typeof templateUrl === 'string' ? undefined : templateUrl.branch,
-      subDirectory: typeof templateUrl === 'string' ? undefined : templateUrl.subDirectory,
-    };
+			const preview = await templateManager.previewTemplate(
+				template,
+				repository.owner,
+				repository.name,
+				configData.exclude_patterns || [],
+				configData.merge_strategy || 'merge',
+				configData.merge_strategies || [],
+				configData.plugins || []
+			);
 
-    logger.info('Applying template', {
-      templateName: template.name,
-      owner: repository.owner,
-      repo: repository.name,
-    });
+			previewResults.push({
+				template: template.name,
+				...preview,
+			});
+		}
 
-    const result = await templateManager.processTemplate(
-      template,
-      repository.owner,
-      repository.name,
-      configData.exclude_patterns || [],
-      configData.merge_strategy || 'merge',
-      configData.merge_strategies || [],
-      configData.plugins || []
-    );
+		return { preview: true, results: previewResults };
+	}
 
-    results.push(result);
+	// Apply templates
+	const results = [];
+	for (const templateUrl of configData.templates) {
+		const template = {
+			url: typeof templateUrl === 'string' ? templateUrl : templateUrl.url,
+			name: typeof templateUrl === 'string' ? templateUrl : (templateUrl.name || templateUrl.url),
+			branch: typeof templateUrl === 'string' ? undefined : templateUrl.branch,
+			subDirectory: typeof templateUrl === 'string' ? undefined : templateUrl.subDirectory,
+		};
 
-    // Record PR if created
-    if (result.pullRequestNumber) {
-      database.createPullRequestRecord({
-        repo_id: repository.id,
-        pr_number: result.pullRequestNumber,
-        pr_url: `https://github.com/${repository.owner}/${repository.name}/pull/${result.pullRequestNumber}`,
-        templates_applied: template.name,
-        job_id: null,
-      });
+		logger.info('Applying template', {
+			templateName: template.name,
+			owner: repository.owner,
+			repo: repository.name,
+		});
 
-      logger.info('Pull request created', {
-        owner: repository.owner,
-        repo: repository.name,
-        prNumber: result.pullRequestNumber,
-        template: template.name,
-      });
-    }
-  }
+		const result = await templateManager.processTemplate(
+			template,
+			repository.owner,
+			repository.name,
+			configData.exclude_patterns || [],
+			configData.merge_strategy || 'merge',
+			configData.merge_strategies || [],
+			configData.plugins || []
+		);
 
-  await templateManager.cleanup();
+		results.push(result);
 
-  return {
-    applied: true,
-    results: results.map((r) => ({
-      template: r.template.name,
-      success: r.success,
-      filesProcessed: r.filesProcessed,
-      errors: r.errors,
-      prNumber: r.pullRequestNumber,
-    })),
-  };
+		// Record PR if created
+		if (result.pullRequestNumber) {
+			database.createPullRequestRecord({
+				repo_id: repository.id,
+				pr_number: result.pullRequestNumber,
+				pr_url: `https://github.com/${repository.owner}/${repository.name}/pull/${result.pullRequestNumber}`,
+				templates_applied: template.name,
+				job_id: null,
+			});
+
+			logger.info('Pull request created', {
+				owner: repository.owner,
+				repo: repository.name,
+				prNumber: result.pullRequestNumber,
+				template: template.name,
+			});
+		}
+	}
+
+	await templateManager.cleanup();
+
+	return {
+		applied: true,
+		results: results.map((r) => ({
+			template: r.template.name,
+			success: r.success,
+			filesProcessed: r.filesProcessed,
+			errors: r.errors,
+			prNumber: r.pullRequestNumber,
+		})),
+	};
 }
 
 /**
  * Worker loop - processes pending jobs
  */
 async function runWorker(): Promise<void> {
-  if (activeWorkers >= MAX_CONCURRENT_WORKERS) {
-    return; // Max workers already running
-  }
+	if (activeWorkers >= MAX_CONCURRENT_WORKERS) {
+		return; // Max workers already running
+	}
 
-  // Get pending jobs that are ready to run
-  const pendingJobs = database.getPendingJobs(1);
-  
-  if (pendingJobs.length === 0) {
-    return; // No jobs to process
-  }
+	// Get pending jobs that are ready to run
+	const pendingJobs = database.getPendingJobs(1);
 
-  const job = pendingJobs[0];
-  
-  // Check if job is scheduled for the future
-  if (job.scheduled_at && job.scheduled_at > Date.now()) {
-    return; // Job not ready yet
-  }
+	if (pendingJobs.length === 0) {
+		return; // No jobs to process
+	}
 
-  activeWorkers++;
-  
-  // Process job asynchronously
-  processJob(job)
-    .catch((error) => {
-      logger.error('Unexpected error in job processing', {
-        jobId: job.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    })
-    .finally(() => {
-      activeWorkers--;
-    });
+	const job = pendingJobs[0];
+
+	// Check if job is scheduled for the future
+	if (job.scheduled_at && job.scheduled_at > Date.now()) {
+		return; // Job not ready yet
+	}
+
+	activeWorkers++;
+
+	// Process job asynchronously
+	processJob(job)
+		.catch((error) => {
+			logger.error('Unexpected error in job processing', {
+				jobId: job.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		})
+		.finally(() => {
+			activeWorkers--;
+		});
 }
 
 /**
  * Start the background job worker pool
  */
 function startWorkerPool(): void {
-  if (workerInterval) {
-    return; // Already running
-  }
+	if (workerInterval) {
+		return; // Already running
+	}
 
-  logger.info('Starting background job worker pool', {
-    maxWorkers: MAX_CONCURRENT_WORKERS,
-  });
+	logger.info('Starting background job worker pool', {
+		maxWorkers: MAX_CONCURRENT_WORKERS,
+	});
 
-  // Run worker check every 10 seconds
-  workerInterval = setInterval(() => {
-    runWorker().catch((error) => {
-      logger.error('Worker pool error', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
-  }, 10000);
+	// Run worker check every 10 seconds
+	workerInterval = setInterval(() => {
+		runWorker().catch((error) => {
+			logger.error('Worker pool error', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	}, 10000);
 }
 
 /**
  * Stop the background job worker pool
  */
 function stopWorkerPool(): void {
-  if (workerInterval) {
-    clearInterval(workerInterval);
-    workerInterval = null;
-    logger.info('Stopped background job worker pool');
-  }
+	if (workerInterval) {
+		clearInterval(workerInterval);
+		workerInterval = null;
+		logger.info('Stopped background job worker pool');
+	}
 }
 
 // ============================================================================
@@ -419,96 +419,96 @@ let cleanupInterval: NodeJS.Timeout | null = null;
  * Run data retention cleanup
  */
 function runCleanup(): void {
-  try {
-    logger.info('Running data retention cleanup');
+	try {
+		logger.info('Running data retention cleanup');
 
-    // Cleanup old webhook events (30 days processed, 90 days failed)
-    database.cleanupOldWebhookEvents();
-    
-    // Cleanup old background jobs (30 days completed, 90 days failed)
-    database.cleanupOldBackgroundJobs();
+		// Cleanup old webhook events (30 days processed, 90 days failed)
+		database.cleanupOldWebhookEvents();
 
-    // Cleanup old sessions (7 days)
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const stmt = database['db'].prepare('DELETE FROM user_sessions WHERE created_at < ?');
-    stmt.run(sevenDaysAgo);
+		// Cleanup old background jobs (30 days completed, 90 days failed)
+		database.cleanupOldBackgroundJobs();
 
-    logger.info('Data retention cleanup completed');
-  } catch (error) {
-    logger.error('Data retention cleanup failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+		// Cleanup old sessions (7 days)
+		const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+		const stmt = database['db'].prepare('DELETE FROM user_sessions WHERE created_at < ?');
+		stmt.run(sevenDaysAgo);
+
+		logger.info('Data retention cleanup completed');
+	} catch (error) {
+		logger.error('Data retention cleanup failed', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 /**
  * Start the cleanup scheduler (runs daily)
  */
 function startCleanupScheduler(): void {
-  if (cleanupInterval) {
-    return; // Already running
-  }
+	if (cleanupInterval) {
+		return; // Already running
+	}
 
-  logger.info('Starting data retention cleanup scheduler');
+	logger.info('Starting data retention cleanup scheduler');
 
-  // Run cleanup immediately on startup
-  runCleanup();
+	// Run cleanup immediately on startup
+	runCleanup();
 
-  // Then run daily (24 hours)
-  cleanupInterval = setInterval(() => {
-    runCleanup();
-  }, 24 * 60 * 60 * 1000);
+	// Then run daily (24 hours)
+	cleanupInterval = setInterval(() => {
+		runCleanup();
+	}, 24 * 60 * 60 * 1000);
 }
 
 /**
  * Stop the cleanup scheduler
  */
 function stopCleanupScheduler(): void {
-  if (cleanupInterval) {
-    clearInterval(cleanupInterval);
-    cleanupInterval = null;
-    logger.info('Stopped cleanup scheduler');
-  }
+	if (cleanupInterval) {
+		clearInterval(cleanupInterval);
+		cleanupInterval = null;
+		logger.info('Stopped cleanup scheduler');
+	}
 }
 
 // Initialize database and start server
 async function startServer() {
-  try {
-    await database.initialize();
-    logger.info('Database initialized successfully');
-    
-    app.listen(port, () => {
-      logger.info(`🧵 RepoWeaver GitHub App running on port ${port}`);
-      logger.info(`📝 Webhook endpoint: http://localhost:${port}/webhooks/github`);
-      logger.info(`🔐 OAuth callback: http://localhost:${port}/auth/github/callback`);
-    });
+	try {
+		await database.initialize();
+		logger.info('Database initialized successfully');
 
-    // Start background job worker pool
-    startWorkerPool();
+		app.listen(port, () => {
+			logger.info(`🧵 RepoWeaver GitHub App running on port ${port}`);
+			logger.info(`📝 Webhook endpoint: http://localhost:${port}/webhooks/github`);
+			logger.info(`🔐 OAuth callback: http://localhost:${port}/auth/github/callback`);
+		});
 
-    // Start cleanup scheduler
-    startCleanupScheduler();
-  } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
-  }
+		// Start background job worker pool
+		startWorkerPool();
+
+		// Start cleanup scheduler
+		startCleanupScheduler();
+	} catch (error) {
+		logger.error('Failed to start server:', error);
+		process.exit(1);
+	}
 }
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  logger.info('Received SIGTERM, shutting down gracefully...');
-  stopWorkerPool();
-  stopCleanupScheduler();
-  await database.close();
-  process.exit(0);
+	logger.info('Received SIGTERM, shutting down gracefully...');
+	stopWorkerPool();
+	stopCleanupScheduler();
+	await database.close();
+	process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  logger.info('Received SIGINT, shutting down gracefully...');
-  stopWorkerPool();
-  stopCleanupScheduler();
-  await database.close();
-  process.exit(0);
+	logger.info('Received SIGINT, shutting down gracefully...');
+	stopWorkerPool();
+	stopCleanupScheduler();
+	await database.close();
+	process.exit(0);
 });
 
 startServer();

@@ -1,7 +1,7 @@
-import { Router, Request, Response } from 'express';
 import { Octokit } from '@octokit/rest';
+import { Request, Response, Router } from 'express';
+import { createSession, encrypt, generateNonce, generateSessionToken } from '../auth';
 import { DatabaseManager } from '../database';
-import { generateSessionToken, generateNonce, encrypt, createSession } from '../auth';
 import { OAuthState } from '../types';
 
 export function createOAuthRouter(db: DatabaseManager): Router {
@@ -21,7 +21,7 @@ export function createOAuthRouter(db: DatabaseManager): Router {
 	 */
 	router.get('/github', (req: Request, res: Response) => {
 		const returnUrl = (req.query.return_url as string) || '/';
-		
+
 		// Generate OAuth state with nonce
 		const state: OAuthState = {
 			nonce: generateNonce(),

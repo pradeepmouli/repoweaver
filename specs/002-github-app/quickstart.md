@@ -1,7 +1,7 @@
 # Quickstart: GitHub App Development
 
-**Feature**: GitHub App for RepoWeaver  
-**Audience**: Developers implementing the GitHub App integration  
+**Feature**: GitHub App for RepoWeaver
+**Audience**: Developers implementing the GitHub App integration
 **Time to Complete**: 15-30 minutes for local setup
 
 ## Prerequisites
@@ -245,7 +245,7 @@ console.log('Received:', req.headers['x-hub-signature-256']);
 
 **Symptom**: GitHub API returns 403 with rate limit message
 
-**Solution**: 
+**Solution**:
 
 ```bash
 # Check rate limit status
@@ -278,5 +278,5 @@ curl https://api.github.com/rate_limit \
 - Consult `specs/002-github-app/contracts/` for API and webhook schemas
 - See `AGENTS.md` for coding agent guidance
 
-**Estimated setup time**: 15-30 minutes  
+**Estimated setup time**: 15-30 minutes
 **Ready to code**: After step 7 completes successfully

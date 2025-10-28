@@ -1,7 +1,7 @@
-import { Router, Request, Response } from 'express';
 import { createHmac } from 'crypto';
-import { DatabaseManager, RepositoryConfig } from '../database';
+import { Request, Response, Router } from 'express';
 import { logger } from '../app-logger';
+import { DatabaseManager, RepositoryConfig } from '../database';
 
 export function createWebhookRouter(db: DatabaseManager): Router {
 	const router = Router();

@@ -1,7 +1,7 @@
 # Data Model: GitHub App for RepoWeaver
 
-**Feature**: GitHub App Integration  
-**Date**: 2025-10-27  
+**Feature**: GitHub App Integration
+**Date**: 2025-10-27
 **Purpose**: Define database schema and entity relationships for GitHub App persistence
 
 ## Entity Relationship Diagram
@@ -463,8 +463,8 @@ CREATE TABLE schema_version (
 
 ```sql
 -- Get pending jobs ready to process
-SELECT * FROM background_jobs 
-WHERE status = 'pending' 
+SELECT * FROM background_jobs
+WHERE status = 'pending'
   AND (scheduled_at IS NULL OR scheduled_at <= ?)
 ORDER BY created_at ASC
 LIMIT 5;
@@ -476,7 +476,7 @@ JOIN installations i ON rc.installation_id = i.id
 WHERE rc.github_repo_id = ?;
 
 -- Cleanup expired sessions
-DELETE FROM user_sessions 
+DELETE FROM user_sessions
 WHERE expires_at < ?;
 ```
 
@@ -486,9 +486,9 @@ WHERE expires_at < ?;
 
 Database schema designed for:
 
-✅ Data integrity (foreign keys, constraints)  
-✅ Performance (indexes on query columns)  
-✅ Audit trail (timestamps, event logs)  
-✅ Security (encrypted tokens)  
-✅ Scalability (efficient queries, retention policies)  
+✅ Data integrity (foreign keys, constraints)
+✅ Performance (indexes on query columns)
+✅ Audit trail (timestamps, event logs)
+✅ Security (encrypted tokens)
+✅ Scalability (efficient queries, retention policies)
 ✅ Compliance with constitutional principles (type safety, no violations)

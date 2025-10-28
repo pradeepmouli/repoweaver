@@ -1,7 +1,7 @@
 import { createAppAuth } from '@octokit/auth-app';
-import { Octokit } from '@octokit/rest';
 import { retry } from '@octokit/plugin-retry';
 import { throttling } from '@octokit/plugin-throttling';
+import { Octokit } from '@octokit/rest';
 import { TemplateRepository } from './types';
 
 // Create Octokit with retry and throttling plugins
@@ -27,7 +27,7 @@ export class GitHubClient {
 	private octokit: InstanceType<typeof MyOctokit>;
 	private installationId: number;
 
-	constructor(appId: string, privateKey: string, installationId: number) {
+	constructor (appId: string, privateKey: string, installationId: number) {
 		this.installationId = installationId;
 		this.octokit = new MyOctokit({
 			authStrategy: createAppAuth,
@@ -190,7 +190,7 @@ export class GitHubClient {
 		return response.data.number;
 	}
 
-	async parseRepositoryUrl(url: string): Promise<{ owner: string; repo: string; branch?: string }> {
+	async parseRepositoryUrl(url: string): Promise<{ owner: string; repo: string; branch?: string; }> {
 		// Parse GitHub repository URL
 		const match = url.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/tree\/([^\/]+))?/);
 		if (!match) {
@@ -240,7 +240,7 @@ export class GitHubClient {
 	async checkRateLimit(): Promise<void> {
 		try {
 			const { data } = await this.octokit.rest.rateLimit.get();
-			
+
 			const core = data.resources.core;
 			const remaining = core.remaining;
 			const limit = core.limit;

@@ -11,14 +11,14 @@ Implement a GitHub App that enables RepoWeaver template weaving capabilities thr
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x with strict mode enabled  
-**Primary Dependencies**: Express.js 4.x, Octokit (@octokit/rest ^20.x, @octokit/auth-app ^6.x), better-sqlite3 ^9.x, Commander.js ^11.x (existing CLI)  
-**Storage**: SQLite for development/production (better-sqlite3), with schema for installations, repository_configs, webhook_events, background_jobs, user_sessions, pr_records  
-**Testing**: Manual integration testing (constitutional requirement), TypeScript strict mode for compile-time validation  
+**Language/Version**: TypeScript 5.x with strict mode enabled
+**Primary Dependencies**: Express.js 4.x, Octokit (@octokit/rest ^20.x, @octokit/auth-app ^6.x), better-sqlite3 ^9.x, Commander.js ^11.x (existing CLI)
+**Storage**: SQLite for development/production (better-sqlite3), with schema for installations, repository_configs, webhook_events, background_jobs, user_sessions, pr_records
+**Testing**: Manual integration testing (constitutional requirement), TypeScript strict mode for compile-time validation
 **Target Platform**: Node.js 20.x LTS server (Linux/macOS), web browsers (Chrome, Firefox, Safari, Edge - last 2 versions for UI)
-**Project Type**: Web application with backend API and frontend UI (extends existing single project structure)  
-**Performance Goals**: <3 min installation flow (SC-001), <5 sec config save (SC-002), <2 min webhook-to-PR (SC-003), <2 sec UI load for 100 repos (SC-004)  
-**Constraints**: 95% webhook success rate (SC-005), max 5 concurrent jobs (FR-013a), 5-min debounce window (FR-009a), 30/90 day data retention (FR-012a), GitHub API rate limit 5000 req/hr  
+**Project Type**: Web application with backend API and frontend UI (extends existing single project structure)
+**Performance Goals**: <3 min installation flow (SC-001), <5 sec config save (SC-002), <2 min webhook-to-PR (SC-003), <2 sec UI load for 100 repos (SC-004)
+**Constraints**: 95% webhook success rate (SC-005), max 5 concurrent jobs (FR-013a), 5-min debounce window (FR-009a), 30/90 day data retention (FR-012a), GitHub API rate limit 5000 req/hr
 **Scale/Scope**: Support 100+ repositories per installation, unlimited installations, 5 concurrent template processing jobs, handle 10-100 webhook events per hour
 
 ## Constitution Check
@@ -48,13 +48,13 @@ Implement a GitHub App that enables RepoWeaver template weaving capabilities thr
   - PR creation via GitHub API
   - Webhook integration for push events
 - ✅ **Principle IV**: Database schema enforces PR tracking (`pr_records` table), all template applications create PRs per FR-018, no direct commit capability
-- ✅ **Principle V**: 
+- ✅ **Principle V**:
   - All new modules use TypeScript with explicit interfaces
   - Database operations use typed methods (no `any` types)
   - API contracts defined in OpenAPI spec for type generation
   - Encryption functions use proper TypeScript types
 - ✅ **Principle VI**: Plugin system untouched; new GitHub-specific code in separate modules (`github-*.ts`), CLI and GitHub App can coexist
-- ✅ **Principle VII**: 
+- ✅ **Principle VII**:
   - Web UI updates create commits to `.weaver.json` (maintains file-based config)
   - Existing config-loader.ts reused for parsing
   - Variable substitution and TypeScript configs still supported
@@ -137,4 +137,3 @@ examples/
 ## Complexity Tracking
 
 **No constitutional violations detected** - this section intentionally left empty per template guidance.
-

@@ -21,7 +21,7 @@ paths:
   # ============================================================================
   # OAuth & Authentication
   # ============================================================================
-  
+
   /auth/github:
     get:
       summary: Initiate GitHub OAuth flow
@@ -79,7 +79,7 @@ paths:
   # ============================================================================
   # Installations & Repositories
   # ============================================================================
-  
+
   /api/installations:
     get:
       summary: List user's GitHub App installations
@@ -144,7 +144,7 @@ paths:
   # ============================================================================
   # Configuration Management
   # ============================================================================
-  
+
   /api/repositories/{repoId}/config:
     get:
       summary: Get repository template configuration
@@ -243,7 +243,7 @@ paths:
   # ============================================================================
   # Template Application
   # ============================================================================
-  
+
   /api/repositories/{repoId}/apply-templates:
     post:
       summary: Manually trigger template application
@@ -293,7 +293,7 @@ paths:
   # ============================================================================
   # Job Status
   # ============================================================================
-  
+
   /api/jobs/{jobId}:
     get:
       summary: Get background job status
@@ -350,7 +350,7 @@ paths:
   # ============================================================================
   # Pull Requests
   # ============================================================================
-  
+
   /api/repositories/{repoId}/pull-requests:
     get:
       summary: List PRs created by RepoWeaver for this repository
@@ -380,7 +380,7 @@ paths:
   # ============================================================================
   # Webhooks (GitHub → RepoWeaver)
   # ============================================================================
-  
+
   /webhooks/github:
     post:
       summary: GitHub webhook endpoint
@@ -642,7 +642,7 @@ components:
           example:
             error: Unauthorized
             message: Please log in to continue
-    
+
     NotFound:
       description: Resource not found
       content:

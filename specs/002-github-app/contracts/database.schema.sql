@@ -136,7 +136,7 @@ CREATE INDEX idx_sessions_user ON user_sessions(github_user_id);
 
 -- Active installations (not suspended)
 CREATE VIEW active_installations AS
-SELECT * FROM installations 
+SELECT * FROM installations
 WHERE suspended_at IS NULL;
 
 -- Pending jobs ready to process
@@ -148,7 +148,7 @@ ORDER BY created_at ASC;
 
 -- Repository configs with installation info
 CREATE VIEW repo_configs_with_installation AS
-SELECT 
+SELECT
   rc.*,
   i.github_installation_id,
   i.account_login,
@@ -165,7 +165,7 @@ CREATE TRIGGER update_repo_config_timestamp
 AFTER UPDATE ON repository_configs
 FOR EACH ROW
 BEGIN
-  UPDATE repository_configs 
+  UPDATE repository_configs
   SET updated_at = strftime('%s', 'now') * 1000
   WHERE id = NEW.id;
 END;
@@ -190,7 +190,7 @@ END;
 -- DELETE FROM user_sessions WHERE expires_at < strftime('%s', 'now') * 1000;
 
 -- Cleanup old webhook events (30 days for successful, 90 for failed)
--- DELETE FROM webhook_events 
+-- DELETE FROM webhook_events
 -- WHERE (status = 'processed' AND created_at < strftime('%s', 'now', '-30 days') * 1000)
 --    OR (status = 'failed' AND created_at < strftime('%s', 'now', '-90 days') * 1000);
 

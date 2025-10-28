@@ -70,7 +70,7 @@ export interface UserSession {
 export class DatabaseManager {
 	private db: BetterSQLite3.Database;
 
-	constructor(dbPath: string) {
+	constructor (dbPath: string) {
 		// Ensure the directory exists
 		const dir = path.dirname(dbPath);
 		if (!fs.existsSync(dir)) {
@@ -79,10 +79,10 @@ export class DatabaseManager {
 
 		this.db = new BetterSQLite3(dbPath);
 		this.db.pragma('foreign_keys = ON');
-		
+
 		// Set busy timeout for handling concurrent access (5 seconds)
 		this.db.pragma('busy_timeout = 5000');
-		
+
 		// Enable WAL mode for better concurrent read/write performance
 		this.db.pragma('journal_mode = WAL');
 	}
@@ -93,15 +93,15 @@ export class DatabaseManager {
 	async initialize(): Promise<void> {
 		// Check if schema_version table exists
 		const tableExists = this.db.prepare(`
-			SELECT name FROM sqlite_master 
+			SELECT name FROM sqlite_master
 			WHERE type='table' AND name='schema_version'
 		`).get();
 
 		if (tableExists) {
 			// Database already initialized, check version
-			const currentVersion = this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as { version: number } | undefined;
+			const currentVersion = this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as { version: number; } | undefined;
 			const version = currentVersion?.version || 0;
-			
+
 			if (version >= 1) {
 				// Already at current version
 				return;
@@ -121,7 +121,7 @@ export class DatabaseManager {
 	 */
 	async migrate(): Promise<void> {
 		// Check current schema version
-		const currentVersion = this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as { version: number } | undefined;
+		const currentVersion = this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as { version: number; } | undefined;
 
 		const version = currentVersion?.version || 0;
 
@@ -309,17 +309,17 @@ export class DatabaseManager {
 
 	getRunningJobsCount(): number {
 		const stmt = this.db.prepare("SELECT COUNT(*) as count FROM background_jobs WHERE status = 'running'");
-		const result = stmt.get() as { count: number };
+		const result = stmt.get() as { count: number; };
 		return result.count;
 	}
 
 	getRecentJobForRepository(githubRepoId: number, sinceTimestamp: number): BackgroundJob | undefined {
 		const stmt = this.db.prepare(`
-			SELECT * FROM background_jobs 
-			WHERE status = 'pending' 
+			SELECT * FROM background_jobs
+			WHERE status = 'pending'
 			AND payload_json LIKE ?
 			AND created_at >= ?
-			ORDER BY created_at DESC 
+			ORDER BY created_at DESC
 			LIMIT 1
 		`);
 		return stmt.get(`%"github_repo_id":${githubRepoId}%`, sinceTimestamp) as BackgroundJob | undefined;
@@ -441,7 +441,7 @@ export class DatabaseManager {
 		const ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
 
 		const stmt = this.db.prepare(`
-      DELETE FROM webhook_events 
+      DELETE FROM webhook_events
       WHERE (status = 'processed' AND created_at < ?)
          OR (status = 'failed' AND created_at < ?)
     `);
@@ -471,4 +471,3 @@ export class DatabaseManager {
 		this.db.close();
 	}
 }
-

@@ -315,14 +315,14 @@ ${primarySourceSummary}
 		filesSkipped: string[];
 		filesWithConflicts: string[];
 		errors: string[];
-		changes: Array<{ path: string; action: 'add' | 'modify' | 'skip'; size: number; hasConflicts: boolean }>;
+		changes: Array<{ path: string; action: 'add' | 'modify' | 'skip'; size: number; hasConflicts: boolean; }>;
 	}> {
 		const filesAdded: string[] = [];
 		const filesModified: string[] = [];
 		const filesSkipped: string[] = [];
 		const filesWithConflicts: string[] = [];
 		const errors: string[] = [];
-		const changes: Array<{ path: string; action: 'add' | 'modify' | 'skip'; size: number; hasConflicts: boolean }> = [];
+		const changes: Array<{ path: string; action: 'add' | 'modify' | 'skip'; size: number; hasConflicts: boolean; }> = [];
 
 		try {
 			// Load plugins

@@ -1,7 +1,7 @@
 # Research: GitHub App for RepoWeaver
 
-**Feature**: GitHub App Integration  
-**Date**: 2025-10-27  
+**Feature**: GitHub App Integration
+**Date**: 2025-10-27
 **Purpose**: Resolve technical unknowns and establish best practices for GitHub App implementation
 
 ## Research Areas
@@ -83,13 +83,13 @@ class JobQueue {
 
   private async processNext(): Promise<void> {
     if (this.workers.size >= this.maxConcurrent) return;
-    
+
     const job = await db.getNextJob();
     if (!job) return;
 
     const worker = this.executeJob(job)
       .finally(() => this.workers.delete(worker));
-    
+
     this.workers.add(worker);
   }
 }
@@ -122,19 +122,19 @@ class JobQueue {
 async function handleWebhook(event: PushEvent): Promise<void> {
   const lastEvent = await db.getLastWebhookEvent(event.repository.id);
   const now = Date.now();
-  
+
   // Cancel existing debounce timer if within window
   if (lastEvent && (now - lastEvent.created_at) < 5 * 60 * 1000) {
     await db.cancelDebouncedJob(lastEvent.job_id);
   }
-  
+
   // Schedule new job 5 minutes from now
   const jobId = await jobQueue.enqueue({
     type: 'apply_templates',
     payload: { repositoryId: event.repository.id },
     scheduledAt: now + (5 * 60 * 1000)
   });
-  
+
   await db.insertWebhookEvent({ ...event, job_id: jobId });
 }
 ```
@@ -241,28 +241,28 @@ async function cleanupOldRecords(): Promise<void> {
 
   // Delete successful events older than 30 days
   await db.run(`
-    DELETE FROM webhook_events 
-    WHERE status = 'completed' 
+    DELETE FROM webhook_events
+    WHERE status = 'completed'
     AND created_at < ?
   `, [now - thirtyDays]);
 
   // Delete failed events older than 90 days
   await db.run(`
-    DELETE FROM webhook_events 
-    WHERE status = 'failed' 
+    DELETE FROM webhook_events
+    WHERE status = 'failed'
     AND created_at < ?
   `, [now - ninetyDays]);
 
   // Same for background_jobs
   await db.run(`
-    DELETE FROM background_jobs 
-    WHERE status = 'completed' 
+    DELETE FROM background_jobs
+    WHERE status = 'completed'
     AND completed_at < ?
   `, [now - thirtyDays]);
 
   await db.run(`
-    DELETE FROM background_jobs 
-    WHERE status = 'failed' 
+    DELETE FROM background_jobs
+    WHERE status = 'failed'
     AND completed_at < ?
   `, [now - ninetyDays]);
 }
@@ -304,7 +304,7 @@ const octokit = new MyOctokit({
 async function checkRateLimit(octokit: Octokit): Promise<void> {
   const { data } = await octokit.rateLimit.get();
   console.log(`Rate limit: ${data.rate.remaining}/${data.rate.limit}`);
-  
+
   if (data.rate.remaining < 100) {
     // Log warning, potentially slow down job processing
     logger.warn('Approaching GitHub API rate limit');
@@ -338,28 +338,28 @@ const ALGORITHM = 'aes-256-gcm';
 function encrypt(plaintext: string): string {
   const iv = randomBytes(16);
   const cipher = createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
-  
+
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
+
   const authTag = cipher.getAuthTag();
-  
+
   // Return: iv:authTag:ciphertext
   return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
 }
 
 function decrypt(ciphertext: string): string {
   const [ivHex, authTagHex, encrypted] = ciphertext.split(':');
-  
+
   const iv = Buffer.from(ivHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');
   const decipher = createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
-  
+
   decipher.setAuthTag(authTag);
-  
+
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
-  
+
   return decrypted;
 }
 ```
@@ -580,16 +580,16 @@ const logger = winston.createLogger({
 });
 
 // Usage
-logger.info('Processing webhook', { 
+logger.info('Processing webhook', {
   eventType: 'push',
   repository: repo.full_name,
-  installationId 
+  installationId
 });
 
-logger.error('Failed to create PR', { 
+logger.error('Failed to create PR', {
   error: error.message,
   stack: error.stack,
-  repository: repo.full_name 
+  repository: repo.full_name
 });
 ```
 
