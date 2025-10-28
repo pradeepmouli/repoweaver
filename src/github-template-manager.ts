@@ -295,4 +295,127 @@ ${primarySourceSummary}
 				return [];
 		}
 	}
+
+	/**
+	 * Preview mode - analyze template changes without actually applying them
+	 * Returns a summary of file changes that would be made
+	 */
+	async previewTemplate(
+		template: TemplateRepository,
+		targetOwner: string,
+		targetRepo: string,
+		excludePatterns: string[] = [],
+		mergeStrategy: 'overwrite' | 'merge' | 'skip' | MergeStrategyConfig = 'merge',
+		mergeStrategies: FilePatternMergeStrategy[] = [],
+		plugins: string[] = []
+	): Promise<{
+		success: boolean;
+		filesAdded: string[];
+		filesModified: string[];
+		filesSkipped: string[];
+		filesWithConflicts: string[];
+		errors: string[];
+		changes: Array<{ path: string; action: 'add' | 'modify' | 'skip'; size: number; hasConflicts: boolean }>;
+	}> {
+		const filesAdded: string[] = [];
+		const filesModified: string[] = [];
+		const filesSkipped: string[] = [];
+		const filesWithConflicts: string[] = [];
+		const errors: string[] = [];
+		const changes: Array<{ path: string; action: 'add' | 'modify' | 'skip'; size: number; hasConflicts: boolean }> = [];
+
+		try {
+			// Load plugins
+			for (const plugin of plugins) {
+				await this.mergeRegistry.loadPlugin(plugin);
+			}
+
+			// Get template files from GitHub
+			const templateFiles = await this.client.getTemplateFiles(template);
+
+			// Filter out excluded files
+			const filteredFiles = this.filterFiles(templateFiles, excludePatterns);
+
+			for (const file of filteredFiles) {
+				try {
+					// Determine merge strategy for this file
+					const defaultMergeStrategy = typeof mergeStrategy === 'string' ? { type: mergeStrategy as 'overwrite' | 'merge' | 'skip' } : mergeStrategy;
+					const fileStrategy = await this.mergeRegistry.resolveStrategyForFile(file.path, mergeStrategies, defaultMergeStrategy);
+
+					// Check if file exists in target
+					let existingContent = '';
+					let fileExists = false;
+					try {
+						const existingFiles = await this.client.getRepositoryContents(targetOwner, targetRepo, file.path);
+						const existingFile = existingFiles.find((f) => f.path === file.path && f.type === 'file');
+						if (existingFile) {
+							existingContent = existingFile.content || '';
+							fileExists = true;
+						}
+					} catch (error) {
+						// File doesn't exist
+					}
+
+					let action: 'add' | 'modify' | 'skip' = 'add';
+					let hasConflicts = false;
+
+					if (fileExists) {
+						if (fileStrategy.name === 'skip') {
+							action = 'skip';
+							filesSkipped.push(file.path);
+						} else {
+							action = 'modify';
+							// Try merge to detect conflicts
+							if (existingContent) {
+								const mergeResult = await fileStrategy.merge({
+									filePath: file.path,
+									templateName: template.name,
+									existingContent,
+									newContent: file.content,
+								});
+
+								if (mergeResult.conflicts && mergeResult.conflicts.length > 0) {
+									hasConflicts = true;
+									filesWithConflicts.push(file.path);
+								}
+							}
+							filesModified.push(file.path);
+						}
+					} else {
+						filesAdded.push(file.path);
+					}
+
+					changes.push({
+						path: file.path,
+						action,
+						size: file.content.length,
+						hasConflicts,
+					});
+				} catch (error) {
+					errors.push(`Failed to preview file ${file.path}: ${error}`);
+				}
+			}
+
+			return {
+				success: errors.length === 0,
+				filesAdded,
+				filesModified,
+				filesSkipped,
+				filesWithConflicts,
+				errors,
+				changes,
+			};
+		} catch (error) {
+			errors.push(`Preview failed: ${error}`);
+			return {
+				success: false,
+				filesAdded,
+				filesModified,
+				filesSkipped,
+				filesWithConflicts,
+				errors,
+				changes,
+			};
+		}
+	}
 }

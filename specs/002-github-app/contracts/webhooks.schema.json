@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitHub Webhook Events for RepoWeaver",
+  "description": "Schemas for GitHub webhook events that RepoWeaver processes",
+  "definitions": {
+    "pushEvent": {
+      "type": "object",
+      "description": "GitHub push event - triggers template updates",
+      "required": ["ref", "repository", "pusher", "commits"],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "description": "Git ref that was pushed",
+          "example": "refs/heads/main"
+        },
+        "before": {
+          "type": "string",
+          "description": "SHA before push"
+        },
+        "after": {
+          "type": "string",
+          "description": "SHA after push"
+        },
+        "repository": {
+          "$ref": "#/definitions/repository"
+        },
+        "pusher": {
+          "$ref": "#/definitions/user"
+        },
+        "commits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/commit"
+          }
+        },
+        "installation": {
+          "$ref": "#/definitions/installation"
+        }
+      }
+    },
+    "installationEvent": {
+      "type": "object",
+      "description": "GitHub App installation or uninstallation event",
+      "required": ["action", "installation", "repositories"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["created", "deleted", "suspend", "unsuspend", "new_permissions_accepted"],
+          "description": "Type of installation event"
+        },
+        "installation": {
+          "$ref": "#/definitions/installation"
+        },
+        "repositories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/repository"
+          }
+        }
+      }
+    },
+    "installationRepositoriesEvent": {
+      "type": "object",
+      "description": "Repositories added/removed from installation",
+      "required": ["action", "installation", "repositories_added", "repositories_removed"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["added", "removed"]
+        },
+        "installation": {
+          "$ref": "#/definitions/installation"
+        },
+        "repositories_added": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/repository"
+          }
+        },
+        "repositories_removed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/repository"
+          }
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "required": ["id", "name", "full_name", "private", "owner"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "GitHub repository ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Repository name"
+        },
+        "full_name": {
+          "type": "string",
+          "description": "Full repository name (owner/repo)"
+        },
+        "private": {
+          "type": "boolean"
+        },
+        "owner": {
+          "$ref": "#/definitions/user"
+        },
+        "html_url": {
+          "type": "string"
+        },
+        "default_branch": {
+          "type": "string",
+          "default": "main"
+        }
+      }
+    },
+    "installation": {
+      "type": "object",
+      "required": ["id", "account"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "GitHub installation ID"
+        },
+        "account": {
+          "$ref": "#/definitions/user"
+        },
+        "app_id": {
+          "type": "integer"
+        },
+        "target_type": {
+          "type": "string",
+          "enum": ["User", "Organization"]
+        },
+        "permissions": {
+          "type": "object"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "suspended_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "user": {
+      "type": "object",
+      "required": ["id", "login", "type"],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "login": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["User", "Organization", "Bot"]
+        },
+        "avatar_url": {
+          "type": "string"
+        }
+      }
+    },
+    "commit": {
+      "type": "object",
+      "required": ["id", "message", "timestamp", "author"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Commit SHA"
+        },
+        "message": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "author": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            }
+          }
+        },
+        "added": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "modified": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/pushEvent"
+    },
+    {
+      "$ref": "#/definitions/installationEvent"
+    },
+    {
+      "$ref": "#/definitions/installationRepositoriesEvent"
+    }
+  ]
+}

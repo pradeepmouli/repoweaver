@@ -1,0 +1,654 @@
+openapi: 3.0.3
+info:
+  title: RepoWeaver GitHub App API
+  description: REST API for RepoWeaver GitHub App web interface and webhook handling
+  version: 1.0.0
+  contact:
+    name: RepoWeaver
+    url: https://github.com/pradeepmouli/repoweaver
+
+servers:
+  - url: https://app.repoweaver.dev
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+security:
+  - sessionToken: []
+  - githubWebhookSignature: []
+
+paths:
+  # ============================================================================
+  # OAuth & Authentication
+  # ============================================================================
+  
+  /auth/github:
+    get:
+      summary: Initiate GitHub OAuth flow
+      tags: [Authentication]
+      security: []
+      responses:
+        '302':
+          description: Redirect to GitHub authorization page
+          headers:
+            Location:
+              schema:
+                type: string
+                example: https://github.com/login/oauth/authorize?client_id=...
+
+  /auth/github/callback:
+    get:
+      summary: GitHub OAuth callback
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to dashboard with session cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session=abc123; HttpOnly; Secure
+        '401':
+          description: OAuth authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Logout and invalidate session
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Session invalidated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Installations & Repositories
+  # ============================================================================
+  
+  /api/installations:
+    get:
+      summary: List user's GitHub App installations
+      tags: [Installations]
+      responses:
+        '200':
+          description: List of installations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Installation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/repositories:
+    get:
+      summary: List repositories accessible to the app
+      tags: [Repositories]
+      parameters:
+        - name: installation_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by installation ID
+      responses:
+        '200':
+          description: List of repositories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repository'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/repositories/{repoId}:
+    get:
+      summary: Get repository details and configuration
+      tags: [Repositories]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: GitHub repository ID
+      responses:
+        '200':
+          description: Repository details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Configuration Management
+  # ============================================================================
+  
+  /api/repositories/{repoId}/config:
+    get:
+      summary: Get repository template configuration
+      tags: [Configuration]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Template configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeaverConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      summary: Update repository template configuration
+      tags: [Configuration]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeaverConfig'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigUpdateResponse'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/repositories/{repoId}/validate-template:
+    post:
+      summary: Validate template repository URL
+      tags: [Configuration]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [templateUrl]
+              properties:
+                templateUrl:
+                  type: string
+                  example: https://github.com/org/template-repo
+      responses:
+        '200':
+          description: Template is valid and accessible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Invalid or inaccessible template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============================================================================
+  # Template Application
+  # ============================================================================
+  
+  /api/repositories/{repoId}/apply-templates:
+    post:
+      summary: Manually trigger template application
+      tags: [Templates]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preview:
+                  type: boolean
+                  default: false
+                  description: If true, return preview without creating PR
+      responses:
+        '202':
+          description: Template application job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: integer
+                  status:
+                    type: string
+                    example: pending
+                  message:
+                    type: string
+        '200':
+          description: Preview of changes (if preview=true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatePreview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Job Status
+  # ============================================================================
+  
+  /api/jobs/{jobId}:
+    get:
+      summary: Get background job status
+      tags: [Jobs]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackgroundJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/repositories/{repoId}/jobs:
+    get:
+      summary: List jobs for repository
+      tags: [Jobs]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BackgroundJob'
+
+  # ============================================================================
+  # Pull Requests
+  # ============================================================================
+  
+  /api/repositories/{repoId}/pull-requests:
+    get:
+      summary: List PRs created by RepoWeaver for this repository
+      tags: [Pull Requests]
+      parameters:
+        - name: repoId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of PRs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PullRequest'
+
+  # ============================================================================
+  # Webhooks (GitHub → RepoWeaver)
+  # ============================================================================
+  
+  /webhooks/github:
+    post:
+      summary: GitHub webhook endpoint
+      tags: [Webhooks]
+      security:
+        - githubWebhookSignature: []
+      parameters:
+        - name: X-GitHub-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            example: push
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+            example: sha256=abc123...
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: GitHub webhook payload (varies by event type)
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  eventId:
+                    type: integer
+        '401':
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+# ============================================================================
+# Component Schemas
+# ============================================================================
+
+components:
+  securitySchemes:
+    sessionToken:
+      type: apiKey
+      in: cookie
+      name: session
+    githubWebhookSignature:
+      type: apiKey
+      in: header
+      name: X-Hub-Signature-256
+
+  schemas:
+    Installation:
+      type: object
+      properties:
+        id:
+          type: integer
+        github_installation_id:
+          type: integer
+        account_login:
+          type: string
+        account_type:
+          type: string
+          enum: [user, organization]
+        installed_at:
+          type: integer
+          format: int64
+
+    Repository:
+      type: object
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+          example: owner/repo-name
+        private:
+          type: boolean
+        has_config:
+          type: boolean
+          description: Whether RepoWeaver config exists
+        auto_update:
+          type: boolean
+
+    RepositoryDetail:
+      allOf:
+        - $ref: '#/components/schemas/Repository'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/WeaverConfig'
+            recent_prs:
+              type: array
+              items:
+                $ref: '#/components/schemas/PullRequest'
+
+    WeaverConfig:
+      type: object
+      required:
+        - templates
+      properties:
+        templates:
+          type: array
+          items:
+            oneOf:
+              - type: string
+                example: https://github.com/org/template-repo
+              - $ref: '#/components/schemas/TemplateRepository'
+        mergeStrategy:
+          type: string
+          enum: [merge, overwrite, skip]
+          default: merge
+        excludePatterns:
+          type: array
+          items:
+            type: string
+          example: ['*.log', 'node_modules/**']
+        includePatterns:
+          type: array
+          items:
+            type: string
+          example: ['!important.log']
+        primarySource:
+          type: string
+          description: Template URL to use as primary source
+        mergeStrategies:
+          type: object
+          additionalProperties:
+            type: object
+
+    TemplateRepository:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          example: https://github.com/org/template-repo
+        branch:
+          type: string
+          example: main
+        subdirectory:
+          type: string
+          example: templates/backend
+        excludePatterns:
+          type: array
+          items:
+            type: string
+
+    ConfigUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        commit_sha:
+          type: string
+          description: SHA of .weaver.json commit
+
+    TemplatePreview:
+      type: object
+      properties:
+        files_to_add:
+          type: array
+          items:
+            type: string
+        files_to_modify:
+          type: array
+          items:
+            type: string
+        files_to_skip:
+          type: array
+          items:
+            type: string
+        templates_applied:
+          type: array
+          items:
+            type: string
+
+    BackgroundJob:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          example: apply_templates
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        attempts:
+          type: integer
+        error_message:
+          type: string
+        created_at:
+          type: integer
+          format: int64
+        completed_at:
+          type: integer
+          format: int64
+
+    PullRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        pr_number:
+          type: integer
+        pr_url:
+          type: string
+        templates_applied:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: integer
+          format: int64
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+        validation_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - invalid or missing session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Unauthorized
+            message: Please log in to continue
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not Found
+            message: Repository not found

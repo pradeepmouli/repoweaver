@@ -1,332 +1,474 @@
-import { Database as SQLiteDatabase } from 'sqlite3';
-import { promisify } from 'util';
+import BetterSQLite3 from 'better-sqlite3';
+import * as fs from 'fs';
+import * as path from 'path';
 
+// Type definitions matching the database schema
 export interface Installation {
 	id: number;
-	account: string;
-	accountType: string;
-	suspended: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
-export interface UserSession {
-	userId: number;
-	login: string;
-	accessToken: string;
-	installationId?: number;
-	createdAt: Date;
+	github_installation_id: number;
+	account_id: number;
+	account_type: 'user' | 'organization';
+	account_login: string;
+	installed_at: number;
+	suspended_at: number | null;
 }
 
 export interface RepositoryConfig {
-	installationId: number;
-	repository: string;
-	templates: string[];
-	mergeStrategy: 'overwrite' | 'merge' | 'skip';
-	excludePatterns: string[];
-	autoUpdate: boolean;
-	createdAt: Date;
-	updatedAt: Date;
+	id: number;
+	installation_id: number;
+	github_repo_id: number;
+	repo_full_name: string;
+	config_json: string;
+	auto_update: boolean;
+	created_at: number;
+	updated_at: number;
 }
 
-export interface Job {
-	id?: number;
+export interface BackgroundJob {
+	id: number;
 	type: string;
-	installationId: number;
-	targetRepository: string;
-	templateRepository: string;
+	payload_json: string;
 	status: 'pending' | 'running' | 'completed' | 'failed';
-	result?: any;
-	error?: string;
-	createdAt: Date;
-	updatedAt?: Date;
+	attempts: number;
+	max_attempts: number;
+	scheduled_at: number | null;
+	started_at: number | null;
+	completed_at: number | null;
+	error_message: string | null;
+	created_at: number;
 }
 
-export interface TemplateConfiguration {
-	templateRepository: string;
-	targetRepository: string;
-	installationId: number;
-	autoUpdate: boolean;
+export interface WebhookEvent {
+	id: number;
+	event_type: string;
+	payload_json: string;
+	status: 'pending' | 'processed' | 'failed';
+	job_id: number | null;
+	created_at: number;
+	processed_at: number | null;
 }
 
-export interface InstallationConfig {
-	installationId: number;
-	autoConfigureTemplates: boolean;
-	defaultTemplates: string[];
+export interface PullRequestRecord {
+	id: number;
+	repo_id: number;
+	pr_number: number;
+	pr_url: string;
+	templates_applied: string;
+	job_id: number | null;
+	created_at: number;
 }
 
-export class Database {
-	private db: SQLiteDatabase;
-	private runAsync: (sql: string, params?: any[]) => Promise<any>;
-	private getAsync: (sql: string, params?: any[]) => Promise<any>;
-	private allAsync: (sql: string, params?: any[]) => Promise<any[]>;
+export interface UserSession {
+	id: number;
+	session_token: string;
+	github_user_id: number;
+	access_token: string;
+	expires_at: number;
+	created_at: number;
+}
+
+export class DatabaseManager {
+	private db: BetterSQLite3.Database;
 
 	constructor(dbPath: string) {
-		this.db = new SQLiteDatabase(dbPath);
-		this.runAsync = promisify(this.db.run.bind(this.db));
-		this.getAsync = promisify(this.db.get.bind(this.db));
-		this.allAsync = promisify(this.db.all.bind(this.db));
+		// Ensure the directory exists
+		const dir = path.dirname(dbPath);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+
+		this.db = new BetterSQLite3(dbPath);
+		this.db.pragma('foreign_keys = ON');
+		
+		// Set busy timeout for handling concurrent access (5 seconds)
+		this.db.pragma('busy_timeout = 5000');
+		
+		// Enable WAL mode for better concurrent read/write performance
+		this.db.pragma('journal_mode = WAL');
 	}
 
+	/**
+	 * Initialize database schema from SQL file
+	 */
 	async initialize(): Promise<void> {
-		await this.createTables();
+		// Check if schema_version table exists
+		const tableExists = this.db.prepare(`
+			SELECT name FROM sqlite_master 
+			WHERE type='table' AND name='schema_version'
+		`).get();
+
+		if (tableExists) {
+			// Database already initialized, check version
+			const currentVersion = this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as { version: number } | undefined;
+			const version = currentVersion?.version || 0;
+			
+			if (version >= 1) {
+				// Already at current version
+				return;
+			}
+		}
+
+		// Read and execute schema
+		const schemaPath = path.join(__dirname, '../specs/002-github-app/contracts/database.schema.sql');
+		const schema = fs.readFileSync(schemaPath, 'utf-8');
+
+		// Execute the entire schema as one transaction
+		this.db.exec(schema);
 	}
 
-	private async createTables(): Promise<void> {
-		const createInstallationsTable = `
-      CREATE TABLE IF NOT EXISTS installations (
-        id INTEGER PRIMARY KEY,
-        account TEXT NOT NULL,
-        account_type TEXT NOT NULL,
-        suspended BOOLEAN DEFAULT FALSE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+	/**
+	 * Run database migration (for production use)
+	 */
+	async migrate(): Promise<void> {
+		// Check current schema version
+		const currentVersion = this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as { version: number } | undefined;
 
-		const createUserSessionsTable = `
-      CREATE TABLE IF NOT EXISTS user_sessions (
-        user_id INTEGER PRIMARY KEY,
-        login TEXT NOT NULL,
-        access_token TEXT NOT NULL,
-        installation_id INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (installation_id) REFERENCES installations(id)
-      )
-    `;
+		const version = currentVersion?.version || 0;
 
-		const createRepositoryConfigsTable = `
-      CREATE TABLE IF NOT EXISTS repository_configs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        installation_id INTEGER NOT NULL,
-        repository TEXT NOT NULL,
-        templates TEXT NOT NULL,
-        merge_strategy TEXT DEFAULT 'merge',
-        exclude_patterns TEXT DEFAULT '[]',
-        auto_update BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (installation_id) REFERENCES installations(id),
-        UNIQUE(installation_id, repository)
-      )
-    `;
-
-		const createJobsTable = `
-      CREATE TABLE IF NOT EXISTS jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,
-        installation_id INTEGER NOT NULL,
-        target_repository TEXT NOT NULL,
-        template_repository TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        result TEXT,
-        error TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (installation_id) REFERENCES installations(id)
-      )
-    `;
-
-		const createTemplateConfigsTable = `
-      CREATE TABLE IF NOT EXISTS template_configurations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        template_repository TEXT NOT NULL,
-        target_repository TEXT NOT NULL,
-        installation_id INTEGER NOT NULL,
-        auto_update BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (installation_id) REFERENCES installations(id),
-        UNIQUE(template_repository, target_repository, installation_id)
-      )
-    `;
-
-		const createInstallationConfigsTable = `
-      CREATE TABLE IF NOT EXISTS installation_configs (
-        installation_id INTEGER PRIMARY KEY,
-        auto_configure_templates BOOLEAN DEFAULT FALSE,
-        default_templates TEXT DEFAULT '[]',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (installation_id) REFERENCES installations(id)
-      )
-    `;
-
-		await this.runAsync(createInstallationsTable);
-		await this.runAsync(createUserSessionsTable);
-		await this.runAsync(createRepositoryConfigsTable);
-		await this.runAsync(createJobsTable);
-		await this.runAsync(createTemplateConfigsTable);
-		await this.runAsync(createInstallationConfigsTable);
+		// For now, we just have version 1
+		if (version < 1) {
+			await this.initialize();
+		}
 	}
 
-	async createInstallation(installation: Omit<Installation, 'suspended' | 'createdAt' | 'updatedAt'>): Promise<void> {
-		const sql = `
-      INSERT INTO installations (id, account, account_type)
-      VALUES (?, ?, ?)
-    `;
-		await this.runAsync(sql, [installation.id, installation.account, installation.accountType]);
-	}
+	// ============================================================================
+	// Installation Methods
+	// ============================================================================
 
-	async deleteInstallation(installationId: number): Promise<void> {
-		const sql = 'DELETE FROM installations WHERE id = ?';
-		await this.runAsync(sql, [installationId]);
-	}
-
-	async suspendInstallation(installationId: number): Promise<void> {
-		const sql = 'UPDATE installations SET suspended = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-		await this.runAsync(sql, [installationId]);
-	}
-
-	async unsuspendInstallation(installationId: number): Promise<void> {
-		const sql = 'UPDATE installations SET suspended = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-		await this.runAsync(sql, [installationId]);
-	}
-
-	async createUserSession(session: UserSession): Promise<void> {
-		const sql = `
-      INSERT OR REPLACE INTO user_sessions (user_id, login, access_token, installation_id)
-      VALUES (?, ?, ?, ?)
-    `;
-		await this.runAsync(sql, [session.userId, session.login, session.accessToken, session.installationId]);
-	}
-
-	async getUserSessionByToken(accessToken: string): Promise<UserSession | null> {
-		const sql = 'SELECT * FROM user_sessions WHERE access_token = ?';
-		const row = await this.getAsync(sql, [accessToken]);
-
-		if (!row) return null;
-
-		return {
-			userId: row.user_id,
-			login: row.login,
-			accessToken: row.access_token,
-			installationId: row.installation_id,
-			createdAt: new Date(row.created_at),
-		};
-	}
-
-	async deleteUserSession(userId: number): Promise<void> {
-		const sql = 'DELETE FROM user_sessions WHERE user_id = ?';
-		await this.runAsync(sql, [userId]);
-	}
-
-	async addRepositoryToInstallation(installationId: number, repository: string, fullName: string): Promise<void> {
-		// For now, we'll just log this. In a full implementation, you might want to track which repositories are available
-		console.log(`Repository ${fullName} added to installation ${installationId}`);
-	}
-
-	async removeRepositoryFromInstallation(installationId: number, repository: string): Promise<void> {
-		// Clean up any configurations for this repository
-		await this.deleteRepositoryConfig(`${installationId}/${repository}`);
-	}
-
-	async saveRepositoryConfig(config: RepositoryConfig): Promise<void> {
-		const sql = `
-      INSERT OR REPLACE INTO repository_configs
-      (installation_id, repository, templates, merge_strategy, exclude_patterns, auto_update)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-		await this.runAsync(sql, [config.installationId, config.repository, JSON.stringify(config.templates), config.mergeStrategy, JSON.stringify(config.excludePatterns), config.autoUpdate]);
-	}
-
-	async getRepositoryConfig(installationId: number, repository: string): Promise<RepositoryConfig | null> {
-		const sql = 'SELECT * FROM repository_configs WHERE installation_id = ? AND repository = ?';
-		const row = await this.getAsync(sql, [installationId, repository]);
-
-		if (!row) return null;
-
-		return {
-			installationId: row.installation_id,
-			repository: row.repository,
-			templates: JSON.parse(row.templates),
-			mergeStrategy: row.merge_strategy,
-			excludePatterns: JSON.parse(row.exclude_patterns),
-			autoUpdate: row.auto_update === 1,
-			createdAt: new Date(row.created_at),
-			updatedAt: new Date(row.updated_at),
-		};
-	}
-
-	async deleteRepositoryConfig(repository: string): Promise<void> {
-		const sql = 'DELETE FROM repository_configs WHERE repository = ?';
-		await this.runAsync(sql, [repository]);
-	}
-
-	async queueJob(job: Job): Promise<void> {
-		const sql = `
-      INSERT INTO jobs (type, installation_id, target_repository, template_repository, status)
+	createInstallation(installation: Omit<Installation, 'id'>): Installation {
+		const stmt = this.db.prepare(`
+      INSERT INTO installations (github_installation_id, account_id, account_type, account_login, installed_at)
       VALUES (?, ?, ?, ?, ?)
-    `;
-		await this.runAsync(sql, [job.type, job.installationId, job.targetRepository, job.templateRepository, job.status]);
-	}
+    `);
 
-	async getQueuedJobs(limit = 10): Promise<Job[]> {
-		const sql = 'SELECT * FROM jobs WHERE status = "pending" ORDER BY created_at LIMIT ?';
-		const rows = await this.allAsync(sql, [limit]);
-
-		return rows.map((row) => ({
-			id: row.id,
-			type: row.type,
-			installationId: row.installation_id,
-			targetRepository: row.target_repository,
-			templateRepository: row.template_repository,
-			status: row.status,
-			result: row.result ? JSON.parse(row.result) : undefined,
-			error: row.error,
-			createdAt: new Date(row.created_at),
-			updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
-		}));
-	}
-
-	async updateJobStatus(jobId: number, status: string, result?: any, error?: string): Promise<void> {
-		const sql = `
-      UPDATE jobs
-      SET status = ?, result = ?, error = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `;
-		await this.runAsync(sql, [status, result ? JSON.stringify(result) : null, error, jobId]);
-	}
-
-	async getTemplateConfigurations(templateRepository: string): Promise<TemplateConfiguration[]> {
-		const sql = 'SELECT * FROM template_configurations WHERE template_repository = ?';
-		const rows = await this.allAsync(sql, [templateRepository]);
-
-		return rows.map((row) => ({
-			templateRepository: row.template_repository,
-			targetRepository: row.target_repository,
-			installationId: row.installation_id,
-			autoUpdate: row.auto_update === 1,
-		}));
-	}
-
-	async getInstallationConfig(installationId: number): Promise<InstallationConfig | null> {
-		const sql = 'SELECT * FROM installation_configs WHERE installation_id = ?';
-		const row = await this.getAsync(sql, [installationId]);
-
-		if (!row) return null;
+		const result = stmt.run(installation.github_installation_id, installation.account_id, installation.account_type, installation.account_login, installation.installed_at);
 
 		return {
-			installationId: row.installation_id,
-			autoConfigureTemplates: row.auto_configure_templates === 1,
-			defaultTemplates: JSON.parse(row.default_templates),
+			id: result.lastInsertRowid as number,
+			...installation,
 		};
 	}
 
-	async saveInstallationConfig(config: InstallationConfig): Promise<void> {
-		const sql = `
-      INSERT OR REPLACE INTO installation_configs
-      (installation_id, auto_configure_templates, default_templates)
-      VALUES (?, ?, ?)
-    `;
-		await this.runAsync(sql, [config.installationId, config.autoConfigureTemplates, JSON.stringify(config.defaultTemplates)]);
+	getInstallationByGithubId(githubInstallationId: number): Installation | undefined {
+		const stmt = this.db.prepare('SELECT * FROM installations WHERE github_installation_id = ?');
+		return stmt.get(githubInstallationId) as Installation | undefined;
 	}
 
-	async close(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			this.db.close((err) => {
-				if (err) reject(err);
-				else resolve();
-			});
-		});
+	getInstallation(id: number): Installation | undefined {
+		const stmt = this.db.prepare('SELECT * FROM installations WHERE id = ?');
+		return stmt.get(id) as Installation | undefined;
+	}
+
+	suspendInstallation(githubInstallationId: number): void {
+		const stmt = this.db.prepare('UPDATE installations SET suspended_at = ? WHERE github_installation_id = ?');
+		const now = Date.now();
+		stmt.run(now, githubInstallationId);
+	}
+
+	deleteInstallation(githubInstallationId: number): void {
+		const stmt = this.db.prepare('DELETE FROM installations WHERE github_installation_id = ?');
+		stmt.run(githubInstallationId);
+	}
+
+	listInstallations(): Installation[] {
+		const stmt = this.db.prepare('SELECT * FROM active_installations');
+		return stmt.all() as Installation[];
+	}
+
+	// ============================================================================
+	// Repository Config Methods
+	// ============================================================================
+
+	createRepositoryConfig(config: Omit<RepositoryConfig, 'id' | 'created_at' | 'updated_at'>): RepositoryConfig {
+		const now = Date.now();
+		const stmt = this.db.prepare(`
+      INSERT INTO repository_configs (installation_id, github_repo_id, repo_full_name, config_json, auto_update, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+		const result = stmt.run(config.installation_id, config.github_repo_id, config.repo_full_name, config.config_json, config.auto_update ? 1 : 0, now, now);
+
+		return {
+			id: result.lastInsertRowid as number,
+			...config,
+			created_at: now,
+			updated_at: now,
+		};
+	}
+
+	getRepositoryConfig(githubRepoId: number): RepositoryConfig | undefined {
+		const stmt = this.db.prepare('SELECT * FROM repository_configs WHERE github_repo_id = ?');
+		return stmt.get(githubRepoId) as RepositoryConfig | undefined;
+	}
+
+	getRepositoryConfigById(id: number): RepositoryConfig | undefined {
+		const stmt = this.db.prepare('SELECT * FROM repository_configs WHERE id = ?');
+		return stmt.get(id) as RepositoryConfig | undefined;
+	}
+
+	updateRepositoryConfig(githubRepoId: number, updates: Partial<Omit<RepositoryConfig, 'id' | 'created_at' | 'updated_at'>>): void {
+		const fields: string[] = [];
+		const values: any[] = [];
+
+		if (updates.config_json !== undefined) {
+			fields.push('config_json = ?');
+			values.push(updates.config_json);
+		}
+		if (updates.auto_update !== undefined) {
+			fields.push('auto_update = ?');
+			values.push(updates.auto_update ? 1 : 0);
+		}
+
+		if (fields.length === 0) return;
+
+		fields.push('updated_at = ?');
+		values.push(Date.now());
+		values.push(githubRepoId);
+
+		const stmt = this.db.prepare(`UPDATE repository_configs SET ${fields.join(', ')} WHERE github_repo_id = ?`);
+		stmt.run(...values);
+	}
+
+	deleteRepositoryConfig(githubRepoId: number): void {
+		const stmt = this.db.prepare('DELETE FROM repository_configs WHERE github_repo_id = ?');
+		stmt.run(githubRepoId);
+	}
+
+	listRepositoryConfigsByInstallation(installationId: number): RepositoryConfig[] {
+		const stmt = this.db.prepare('SELECT * FROM repository_configs WHERE installation_id = ?');
+		return stmt.all(installationId) as RepositoryConfig[];
+	}
+
+	listAllRepositoryConfigs(): RepositoryConfig[] {
+		const stmt = this.db.prepare('SELECT * FROM repository_configs');
+		return stmt.all() as RepositoryConfig[];
+	}
+
+	// ============================================================================
+	// Background Job Methods
+	// ============================================================================
+
+	createBackgroundJob(job: Omit<BackgroundJob, 'id' | 'created_at'>): BackgroundJob {
+		const now = Date.now();
+		const stmt = this.db.prepare(`
+      INSERT INTO background_jobs (type, payload_json, status, attempts, max_attempts, scheduled_at, started_at, completed_at, error_message, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+		const result = stmt.run(job.type, job.payload_json, job.status, job.attempts, job.max_attempts, job.scheduled_at, job.started_at, job.completed_at, job.error_message, now);
+
+		return {
+			id: result.lastInsertRowid as number,
+			...job,
+			created_at: now,
+		};
+	}
+
+	getBackgroundJob(id: number): BackgroundJob | undefined {
+		const stmt = this.db.prepare('SELECT * FROM background_jobs WHERE id = ?');
+		return stmt.get(id) as BackgroundJob | undefined;
+	}
+
+	updateBackgroundJob(id: number, updates: Partial<Omit<BackgroundJob, 'id' | 'created_at'>>): void {
+		const fields: string[] = [];
+		const values: any[] = [];
+
+		if (updates.status !== undefined) {
+			fields.push('status = ?');
+			values.push(updates.status);
+		}
+		if (updates.attempts !== undefined) {
+			fields.push('attempts = ?');
+			values.push(updates.attempts);
+		}
+		if (updates.started_at !== undefined) {
+			fields.push('started_at = ?');
+			values.push(updates.started_at);
+		}
+		if (updates.completed_at !== undefined) {
+			fields.push('completed_at = ?');
+			values.push(updates.completed_at);
+		}
+		if (updates.error_message !== undefined) {
+			fields.push('error_message = ?');
+			values.push(updates.error_message);
+		}
+
+		if (fields.length === 0) return;
+
+		values.push(id);
+
+		const stmt = this.db.prepare(`UPDATE background_jobs SET ${fields.join(', ')} WHERE id = ?`);
+		stmt.run(...values);
+	}
+
+	getPendingJobs(limit: number = 10): BackgroundJob[] {
+		const stmt = this.db.prepare('SELECT * FROM pending_jobs LIMIT ?');
+		return stmt.all(limit) as BackgroundJob[];
+	}
+
+	getRunningJobsCount(): number {
+		const stmt = this.db.prepare("SELECT COUNT(*) as count FROM background_jobs WHERE status = 'running'");
+		const result = stmt.get() as { count: number };
+		return result.count;
+	}
+
+	getRecentJobForRepository(githubRepoId: number, sinceTimestamp: number): BackgroundJob | undefined {
+		const stmt = this.db.prepare(`
+			SELECT * FROM background_jobs 
+			WHERE status = 'pending' 
+			AND payload_json LIKE ?
+			AND created_at >= ?
+			ORDER BY created_at DESC 
+			LIMIT 1
+		`);
+		return stmt.get(`%"github_repo_id":${githubRepoId}%`, sinceTimestamp) as BackgroundJob | undefined;
+	}
+
+	// ============================================================================
+	// Webhook Event Methods
+	// ============================================================================
+
+	createWebhookEvent(event: Omit<WebhookEvent, 'id' | 'created_at'>): WebhookEvent {
+		const now = Date.now();
+		const stmt = this.db.prepare(`
+      INSERT INTO webhook_events (event_type, payload_json, status, job_id, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+		const result = stmt.run(event.event_type, event.payload_json, event.status, event.job_id, now);
+
+		return {
+			id: result.lastInsertRowid as number,
+			...event,
+			created_at: now,
+		};
+	}
+
+	updateWebhookEvent(id: number, updates: Partial<Omit<WebhookEvent, 'id' | 'created_at'>>): void {
+		const fields: string[] = [];
+		const values: any[] = [];
+
+		if (updates.status !== undefined) {
+			fields.push('status = ?');
+			values.push(updates.status);
+		}
+		if (updates.job_id !== undefined) {
+			fields.push('job_id = ?');
+			values.push(updates.job_id);
+		}
+		if (updates.processed_at !== undefined) {
+			fields.push('processed_at = ?');
+			values.push(updates.processed_at);
+		}
+
+		if (fields.length === 0) return;
+
+		values.push(id);
+
+		const stmt = this.db.prepare(`UPDATE webhook_events SET ${fields.join(', ')} WHERE id = ?`);
+		stmt.run(...values);
+	}
+
+	// ============================================================================
+	// Pull Request Record Methods
+	// ============================================================================
+
+	createPullRequestRecord(pr: Omit<PullRequestRecord, 'id' | 'created_at'>): PullRequestRecord {
+		const now = Date.now();
+		const stmt = this.db.prepare(`
+      INSERT INTO pr_records (repo_id, pr_number, pr_url, templates_applied, job_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+		const result = stmt.run(pr.repo_id, pr.pr_number, pr.pr_url, pr.templates_applied, pr.job_id, now);
+
+		return {
+			id: result.lastInsertRowid as number,
+			...pr,
+			created_at: now,
+		};
+	}
+
+	listPullRequestsByRepo(repoId: number, limit: number = 10): PullRequestRecord[] {
+		const stmt = this.db.prepare('SELECT * FROM pr_records WHERE repo_id = ? ORDER BY created_at DESC LIMIT ?');
+		return stmt.all(repoId, limit) as PullRequestRecord[];
+	}
+
+	// ============================================================================
+	// User Session Methods
+	// ============================================================================
+
+	createUserSession(session: Omit<UserSession, 'id' | 'created_at'>): UserSession {
+		const now = Date.now();
+		const stmt = this.db.prepare(`
+      INSERT INTO user_sessions (session_token, github_user_id, access_token, expires_at, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+		const result = stmt.run(session.session_token, session.github_user_id, session.access_token, session.expires_at, now);
+
+		return {
+			id: result.lastInsertRowid as number,
+			...session,
+			created_at: now,
+		};
+	}
+
+	getUserSessionByToken(sessionToken: string): UserSession | undefined {
+		const stmt = this.db.prepare('SELECT * FROM user_sessions WHERE session_token = ?');
+		return stmt.get(sessionToken) as UserSession | undefined;
+	}
+
+	deleteUserSession(sessionToken: string): void {
+		const stmt = this.db.prepare('DELETE FROM user_sessions WHERE session_token = ?');
+		stmt.run(sessionToken);
+	}
+
+	deleteExpiredSessions(): void {
+		const now = Date.now();
+		const stmt = this.db.prepare('DELETE FROM user_sessions WHERE expires_at < ?');
+		stmt.run(now);
+	}
+
+	// ============================================================================
+	// Cleanup Methods
+	// ============================================================================
+
+	cleanupOldWebhookEvents(): void {
+		const now = Date.now();
+		const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+		const ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
+
+		const stmt = this.db.prepare(`
+      DELETE FROM webhook_events 
+      WHERE (status = 'processed' AND created_at < ?)
+         OR (status = 'failed' AND created_at < ?)
+    `);
+
+		stmt.run(thirtyDaysAgo, ninetyDaysAgo);
+	}
+
+	cleanupOldBackgroundJobs(): void {
+		const now = Date.now();
+		const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+		const ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
+
+		const stmt = this.db.prepare(`
+      DELETE FROM background_jobs
+      WHERE (status = 'completed' AND completed_at < ?)
+         OR (status = 'failed' AND completed_at < ?)
+    `);
+
+		stmt.run(thirtyDaysAgo, ninetyDaysAgo);
+	}
+
+	// ============================================================================
+	// Utility Methods
+	// ============================================================================
+
+	close(): void {
+		this.db.close();
 	}
 }
+

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { createHmac } from 'crypto';
 import { GitHubClient } from './github-client';
 import { GitHubBootstrapper } from './github-bootstrapper';
-import { Database } from './database';
+import { DatabaseManager } from './database';
 
 export interface WebhookEvent {
   action: string;
@@ -33,13 +33,13 @@ export class WebhookHandler {
   private webhookSecret: string;
   private appId: string;
   private privateKey: string;
-  private database: Database;
+  private database: DatabaseManager;
 
   constructor(
     webhookSecret: string,
     appId: string,
     privateKey: string,
-    database: Database
+    database: DatabaseManager
   ) {
     this.webhookSecret = webhookSecret;
     this.appId = appId;
