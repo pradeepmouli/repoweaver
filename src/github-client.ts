@@ -1,6 +1,11 @@
 import { createAppAuth } from '@octokit/auth-app';
+import { retry } from '@octokit/plugin-retry';
+import { throttling } from '@octokit/plugin-throttling';
 import { Octokit } from '@octokit/rest';
 import { TemplateRepository } from './types';
+
+// Create Octokit with retry and throttling plugins
+const MyOctokit = Octokit.plugin(retry, throttling);
 
 export interface GitHubFile {
 	name: string;
@@ -19,17 +24,38 @@ export interface GitHubRepository {
 }
 
 export class GitHubClient {
-	private octokit: Octokit;
+	private octokit: InstanceType<typeof MyOctokit>;
 	private installationId: number;
 
-	constructor(appId: string, privateKey: string, installationId: number) {
+	constructor (appId: string, privateKey: string, installationId: number) {
 		this.installationId = installationId;
-		this.octokit = new Octokit({
+		this.octokit = new MyOctokit({
 			authStrategy: createAppAuth,
 			auth: {
 				appId,
 				privateKey,
 				installationId,
+			},
+			throttle: {
+				onRateLimit: (retryAfter, options, octokit, retryCount) => {
+					octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
+					if (retryCount < 3) {
+						octokit.log.info(`Retrying after ${retryAfter} seconds!`);
+						return true;
+					}
+					return false;
+				},
+				onSecondaryRateLimit: (retryAfter, options, octokit, retryCount) => {
+					octokit.log.warn(`Secondary rate limit hit for request ${options.method} ${options.url}`);
+					if (retryCount < 2) {
+						octokit.log.info(`Retrying after ${retryAfter} seconds!`);
+						return true;
+					}
+					return false;
+				},
+			},
+			retry: {
+				doNotRetry: ['429'], // Let throttling plugin handle rate limits
 			},
 		});
 	}
@@ -164,7 +190,7 @@ export class GitHubClient {
 		return response.data.number;
 	}
 
-	async parseRepositoryUrl(url: string): Promise<{ owner: string; repo: string; branch?: string }> {
+	async parseRepositoryUrl(url: string): Promise<{ owner: string; repo: string; branch?: string; }> {
 		// Parse GitHub repository URL
 		const match = url.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/tree\/([^\/]+))?/);
 		if (!match) {
@@ -198,6 +224,48 @@ export class GitHubClient {
 		}
 
 		return files;
+	}
+
+	/**
+	 * Update .weaver.json configuration file in a repository
+	 */
+	async updateWeaverConfig(owner: string, repo: string, config: any, branch?: string): Promise<void> {
+		const configContent = JSON.stringify(config, null, 2);
+		await this.createOrUpdateFile(owner, repo, '.weaver.json', configContent, 'Update RepoWeaver configuration', branch);
+	}
+
+	/**
+	 * Check and log GitHub API rate limit status
+	 */
+	async checkRateLimit(): Promise<void> {
+		try {
+			const { data } = await this.octokit.rest.rateLimit.get();
+
+			const core = data.resources.core;
+			const remaining = core.remaining;
+			const limit = core.limit;
+			const resetDate = new Date(core.reset * 1000);
+			const percentUsed = ((limit - remaining) / limit) * 100;
+
+			// Log if approaching limit (>80% used)
+			if (percentUsed > 80) {
+				this.octokit.log.warn('GitHub API rate limit warning', {
+					remaining,
+					limit,
+					percentUsed: percentUsed.toFixed(1),
+					resetAt: resetDate.toISOString(),
+				});
+			} else {
+				this.octokit.log.info('GitHub API rate limit status', {
+					remaining,
+					limit,
+					percentUsed: percentUsed.toFixed(1),
+					resetAt: resetDate.toISOString(),
+				});
+			}
+		} catch (error) {
+			this.octokit.log.error('Failed to check rate limit', { error });
+		}
 	}
 
 	/*async addRepositoryToInstallation(repositoryName: string): Promise<void> {

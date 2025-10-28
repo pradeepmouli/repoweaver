@@ -5,7 +5,7 @@ A GitHub App that skillfully weaves multiple templates together to create and up
 ## Features
 
 - 🚀 **GitHub App Integration**: Native GitHub integration with OAuth authentication
-- 🔄 **Auto Updates**: Automatically update repositories when templates change
+- 🔄 **Auto Updates**: Automatically update repositories when templates change via webhooks
 - 🎯 **Multi-Template Support**: Apply multiple templates to a single repository
 - 🌿 **Template Branch Support**: Use specific branches or subdirectories from templates
 - 🔧 **Advanced Merge Strategies**: File pattern-based strategies, custom implementations, and plugin system
@@ -13,6 +13,36 @@ A GitHub App that skillfully weaves multiple templates together to create and up
 - 📦 **Pull Request Workflow**: All updates create pull requests for review
 - 🔐 **Secure**: Uses GitHub App authentication with fine-grained permissions
 - 🌐 **Web Interface**: Easy-to-use web interface for configuration and management
+- 👀 **Preview Mode**: See what changes will be made before applying templates
+- 📊 **Progress Tracking**: Monitor template application progress in real-time
+
+## Quick Start
+
+### Option 1: Use the Hosted App (Recommended)
+
+1. **Install RepoWeaver from GitHub Marketplace** (coming soon)
+2. **Select repositories** you want to manage
+3. **Visit the web interface** to configure your templates
+4. **Save configuration** - the app creates `.weaver.json` in your repo
+5. **Done!** The app automatically watches for template updates
+
+### Option 2: Self-Host the GitHub App
+
+Perfect for organizations wanting full control or custom deployments.
+
+1. **Follow the [GitHub App Setup Guide](docs/github-app-setup.md)**
+2. **Deploy to your preferred platform** - see [Deployment Guide](docs/deployment.md)
+   - Railway (recommended - easiest)
+   - Render
+   - Fly.io
+   - Self-hosted VPS/Docker
+3. **Install your app** on your GitHub account/organization
+4. **Configure repositories** through the web interface
+
+**Documentation:**
+- 📖 [GitHub App Setup Guide](docs/github-app-setup.md) - Create and configure your GitHub App
+- 🚀 [Deployment Guide](docs/deployment.md) - Deploy to Railway, Render, Fly.io, or self-host
+- 💡 [Example Configuration](examples/github-app-config.json) - Sample .weaver.json config
 
 ## Installation & Setup
 

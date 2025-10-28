@@ -1,0 +1,42 @@
+{
+	"templates": [
+		"https://github.com/your-org/base-template.git",
+		{
+			"url": "https://github.com/your-org/typescript-template.git",
+			"branch": "main",
+			"subDirectory": "templates/typescript"
+		}
+	],
+	"merge_strategy": "merge",
+	"exclude_patterns": [
+		"*.log",
+		"node_modules/**",
+		".env",
+		".env.*",
+		"dist/**",
+		"build/**",
+		".DS_Store"
+	],
+	"auto_update": true,
+	"merge_strategies": [
+		{
+			"pattern": "package.json",
+			"strategy": "merge",
+			"options": {
+				"arrayMerge": "union"
+			}
+		},
+		{
+			"pattern": "README.md",
+			"strategy": "merge"
+		},
+		{
+			"category": "ci-workflows",
+			"strategy": "overwrite"
+		},
+		{
+			"category": "code-quality",
+			"strategy": "merge"
+		}
+	]
+}

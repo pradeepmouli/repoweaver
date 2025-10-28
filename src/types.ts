@@ -138,3 +138,67 @@ export interface MergePlugin {
 	initialize?(options?: Record<string, any>): Promise<void>;
 	cleanup?(): Promise<void>;
 }
+
+// ============================================================================
+// GitHub App Types
+// ============================================================================
+
+export interface GitHubInstallation {
+	id: number;
+	account: {
+		id: number;
+		login: string;
+		type: 'User' | 'Organization';
+	};
+	suspended_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface GitHubRepository {
+	id: number;
+	name: string;
+	full_name: string;
+	owner: {
+		login: string;
+		id: number;
+	};
+	private: boolean;
+	default_branch: string;
+}
+
+export interface ApplyTemplatesJobPayload {
+	installation_id: number;
+	repo_id: number;
+	repo_full_name: string;
+	templates: string[];
+	config: WeaverConfig;
+	manual: boolean;
+}
+
+export interface WebhookPushPayload {
+	ref: string;
+	repository: {
+		id: number;
+		name: string;
+		full_name: string;
+		owner: {
+			login: string;
+			id: number;
+		};
+	};
+	installation?: {
+		id: number;
+	};
+	commits: Array<{
+		id: string;
+		message: string;
+		timestamp: string;
+	}>;
+}
+
+export interface OAuthState {
+	nonce: string;
+	return_url?: string;
+	created_at: number;
+}

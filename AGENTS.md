@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -182,7 +182,7 @@ npm run mobile:build
 
 RepoWeaver supports multiple configuration approaches:
 
-### **Configuration Files** (in order of precedence):
+### **Configuration Files** (in order of precedence)
 
 1. `weaver.json` - JSON configuration file
 2. `.weaver.json` - Hidden JSON configuration file
@@ -190,12 +190,12 @@ RepoWeaver supports multiple configuration approaches:
 4. `weaver.js` - JavaScript configuration file (dynamic)
 5. `.weaver.js` - Hidden JavaScript configuration file
 
-### **Ignore Files**:
+### **Ignore Files**
 
 1. `.weaverignore` - File patterns to exclude from template processing
 2. `.weaverignore.txt` - Alternative ignore file format
 
-### **Key Configuration Options**:
+### **Key Configuration Options**
 
 - **templates**: Array of template repositories (string URLs or objects)
 - **mergeStrategy**: How to handle existing files (`merge`, `overwrite`, `skip`)
@@ -205,7 +205,7 @@ RepoWeaver supports multiple configuration approaches:
 - **hooks**: Pre/post processing commands
 - **variables**: Environment variable substitution with `${VAR_NAME}` syntax
 
-### **Command Priority**:
+### **Command Priority**
 
 Command line options always override configuration file settings
 
