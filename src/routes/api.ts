@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
-import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
-import { DatabaseManager, BackgroundJob, PullRequestRecord } from '../database';
-import { requireAuth, AuthenticatedRequest, getAccessToken } from '../auth';
-import { logger } from '../app-logger';
-import { GitHubClient } from '../github-client';
+import { Octokit } from '@octokit/rest';
+import { Request, Response, Router } from 'express';
 import fs from 'fs';
+import { logger } from '../app-logger';
+import { AuthenticatedRequest, getAccessToken, requireAuth } from '../auth';
+import { BackgroundJob, DatabaseManager, PullRequestRecord } from '../database';
+import { GitHubClient } from '../github-client';
 
 export function createApiRouter(db: DatabaseManager): Router {
 	const router = Router();
@@ -19,7 +19,7 @@ export function createApiRouter(db: DatabaseManager): Router {
 	}
 
 	// Read private key from file or use direct value
-	const privateKey = privateKeyPath 
+	const privateKey = privateKeyPath
 		? fs.readFileSync(privateKeyPath, 'utf-8')
 		: privateKeyDirect!;
 

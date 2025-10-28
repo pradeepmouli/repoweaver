@@ -183,7 +183,7 @@ For local development, you'll need to expose your local server to receive webhoo
    ```bash
    # Option 1: Set as base64 encoded string
    cat private-key.pem | base64 | railway variables set GITHUB_PRIVATE_KEY_BASE64
-   
+
    # Then update code to decode it
    ```
 

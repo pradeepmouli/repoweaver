@@ -42,11 +42,11 @@ Before deploying, ensure you have:
    ```bash
    railway variables set GITHUB_PRIVATE_KEY=$(cat path/to/private-key.pem | base64)
    ```
-   
+
    Then update `src/app.ts` to decode it:
    ```typescript
    // In app.ts, modify private key loading:
-   const privateKey = process.env.GITHUB_PRIVATE_KEY 
+   const privateKey = process.env.GITHUB_PRIVATE_KEY
      ? Buffer.from(process.env.GITHUB_PRIVATE_KEY, 'base64').toString('utf-8')
      : fs.readFileSync(privateKeyPath, 'utf-8');
    ```
@@ -491,7 +491,7 @@ For single instance:
 2. **Rotate keys regularly** - GitHub App private keys, webhook secrets
 3. **Enable 2FA** on your GitHub account
 4. **Monitor webhook deliveries** for unusual activity
-5. **Keep dependencies updated**: 
+5. **Keep dependencies updated**:
    ```bash
    npm audit
    npm update
